@@ -1,0 +1,190 @@
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    margin: 0;
+    padding: 32px;
+  }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  p.subtitle { color: #64748b; margin-bottom: 40px; font-size: 15px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    border: 1px solid #e2e8f0;
+  }
+  .card h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .card p { font-size: 13px; color: #94a3b8; margin: 0 0 16px; }
+  .full-width { grid-column: 1 / -1; }
+</style>
+
+<h1>Trackplot Demo</h1>
+<p class="subtitle">All 10 chart types rendered with the Trackplot Ruby DSL and D3.js</p>
+
+<div class="grid">
+
+  <%# ─── Line Chart ─────────────────────────────────────── %>
+  <div class="card">
+    <h2>Line Chart</h2>
+    <p>Monthly revenue and profit with smooth curves</p>
+    <%= trackplot_chart @sales_data, height: "280px" do |c| %>
+      <% c.line :revenue, color: "#6366f1", curve: true %>
+      <% c.line :profit, color: "#10b981", curve: true, dashed: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.legend %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Bar Chart ──────────────────────────────────────── %>
+  <div class="card">
+    <h2>Bar Chart</h2>
+    <p>Sales by product category</p>
+    <%= trackplot_chart @category_data, height: "280px" do |c| %>
+      <% c.bar :sales, color: "#06b6d4" %>
+      <% c.axis :x, data_key: :name %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Area Chart ─────────────────────────────────────── %>
+  <div class="card">
+    <h2>Area Chart</h2>
+    <p>Revenue trend with gradient fill</p>
+    <%= trackplot_chart @sales_data, height: "280px" do |c| %>
+      <% c.area :revenue, color: "#8b5cf6", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Stacked Area ───────────────────────────────────── %>
+  <div class="card">
+    <h2>Stacked Area</h2>
+    <p>Revenue vs costs composition over time</p>
+    <%= trackplot_chart @sales_data, height: "280px" do |c| %>
+      <% c.area :profit, stack: "main", color: "#10b981", curve: true %>
+      <% c.area :costs, stack: "main", color: "#f59e0b", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.legend %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Pie Chart ──────────────────────────────────────── %>
+  <div class="card">
+    <h2>Pie Chart</h2>
+    <p>Market share by device segment</p>
+    <%= trackplot_chart @market_share, height: "300px" do |c| %>
+      <% c.pie :value, label_key: :segment %>
+      <% c.tooltip %>
+      <% c.legend %>
+    <% end %>
+  </div>
+
+  <%# ─── Donut Chart ────────────────────────────────────── %>
+  <div class="card">
+    <h2>Donut Chart</h2>
+    <p>Same data as pie, with donut style</p>
+    <%= trackplot_chart @market_share, height: "300px" do |c| %>
+      <% c.pie :value, label_key: :segment, donut: true %>
+      <% c.tooltip %>
+      <% c.legend %>
+    <% end %>
+  </div>
+
+  <%# ─── Scatter Plot ───────────────────────────────────── %>
+  <div class="card">
+    <h2>Scatter Plot</h2>
+    <p>Height vs weight correlation</p>
+    <%= trackplot_chart @scatter_data, height: "280px" do |c| %>
+      <% c.scatter :weight, color: "#ec4899" %>
+      <% c.axis :x, data_key: :height, label: "Height (cm)" %>
+      <% c.axis :y, label: "Weight (kg)" %>
+      <% c.tooltip %>
+      <% c.grid horizontal: true, vertical: true %>
+    <% end %>
+  </div>
+
+  <%# ─── Radar Chart ────────────────────────────────────── %>
+  <div class="card">
+    <h2>Radar Chart</h2>
+    <p>Player comparison across attributes</p>
+    <%= trackplot_chart @player_stats, height: "320px" do |c| %>
+      <% c.radar :player_a, color: "#6366f1" %>
+      <% c.radar :player_b, color: "#ef4444" %>
+      <% c.axis :x, data_key: :stat %>
+      <% c.tooltip %>
+      <% c.legend %>
+    <% end %>
+  </div>
+
+  <%# ─── Horizontal Bar ─────────────────────────────────── %>
+  <div class="card">
+    <h2>Horizontal Bar</h2>
+    <p>Programming language popularity ranking</p>
+    <%= trackplot_chart @ranking_data, height: "280px" do |c| %>
+      <% c.horizontal_bar :popularity, color: "#14b8a6" %>
+      <% c.axis :x, data_key: :language %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Candlestick ────────────────────────────────────── %>
+  <div class="card">
+    <h2>Candlestick</h2>
+    <p>Weekly stock price OHLC</p>
+    <%= trackplot_chart @stock_data, height: "280px" do |c| %>
+      <% c.candlestick open: :open, high: :high, low: :low, close: :close %>
+      <% c.axis :x, data_key: :date %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Funnel ─────────────────────────────────────────── %>
+  <div class="card">
+    <h2>Funnel</h2>
+    <p>Conversion funnel from visitors to retained</p>
+    <%= trackplot_chart @funnel_data, height: "320px" do |c| %>
+      <% c.funnel :count, label_key: :stage %>
+      <% c.tooltip %>
+    <% end %>
+  </div>
+
+  <%# ─── Combined Chart ─────────────────────────────────── %>
+  <div class="card">
+    <h2>Combined (Bar + Line)</h2>
+    <p>Revenue as bars with profit line overlay</p>
+    <%= trackplot_chart @sales_data, height: "280px" do |c| %>
+      <% c.bar :revenue, color: "#06b6d4", opacity: 0.6 %>
+      <% c.line :profit, color: "#6366f1", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.legend %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+</div>
