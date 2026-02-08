@@ -7,6 +7,8 @@ Gemfile.lock
 .byebug_history
 .DS_Store
 
+node_modules
+
 # Dummy app generated/runtime files
 test/dummy/db/*.sqlite3
 test/dummy/db/*.sqlite3-*
