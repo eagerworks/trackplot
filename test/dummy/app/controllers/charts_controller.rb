@@ -80,5 +80,42 @@ class ChartsController < ApplicationController
       {stage: "Paid", count: 1800},
       {stage: "Retained", count: 1200}
     ]
+
+    # Heatmap data
+    @heatmap_data = []
+    %w[Mon Tue Wed Thu Fri Sat Sun].each do |day|
+      (0..23).each do |hour|
+        @heatmap_data << {day: day, hour: hour.to_s, count: rand(1..100)}
+      end
+    end
+
+    # Treemap data
+    @treemap_data = [
+      {name: "React", category: "Frontend", size: 4200},
+      {name: "Vue", category: "Frontend", size: 2800},
+      {name: "Angular", category: "Frontend", size: 2100},
+      {name: "Svelte", category: "Frontend", size: 1200},
+      {name: "Rails", category: "Backend", size: 3500},
+      {name: "Django", category: "Backend", size: 2900},
+      {name: "Express", category: "Backend", size: 2600},
+      {name: "Laravel", category: "Backend", size: 2200},
+      {name: "PostgreSQL", category: "Database", size: 3800},
+      {name: "MongoDB", category: "Database", size: 2400},
+      {name: "Redis", category: "Database", size: 1800}
+    ]
+
+    # Dual Y-axis data
+    @dual_axis_data = [
+      {month: "Jan", revenue: 4000, orders: 120},
+      {month: "Feb", revenue: 3000, orders: 90},
+      {month: "Mar", revenue: 5000, orders: 150},
+      {month: "Apr", revenue: 4780, orders: 140},
+      {month: "May", revenue: 5890, orders: 175},
+      {month: "Jun", revenue: 6390, orders: 190},
+      {month: "Jul", revenue: 7490, orders: 220}
+    ]
+
+    # Sparkline data
+    @sparkline_data = (1..20).map { |i| {x: i, value: rand(20..80)} }
   end
 end

@@ -3,6 +3,7 @@ require_relative "trackplot/engine" if defined?(Rails::Engine)
 
 module Trackplot
   autoload :ChartBuilder, "trackplot/chart_builder"
+  autoload :SparklineBuilder, "trackplot/sparkline_builder"
   autoload :DataAdapter, "trackplot/data_adapter"
   autoload :Theme, "trackplot/theme"
 
@@ -22,5 +23,13 @@ module Trackplot
     autoload :Candlestick, "trackplot/components/candlestick"
     autoload :Funnel, "trackplot/components/funnel"
     autoload :ReferenceLine, "trackplot/components/reference_line"
+    autoload :DataLabel, "trackplot/components/data_label"
+    autoload :Brush, "trackplot/components/brush"
+    autoload :Heatmap, "trackplot/components/heatmap"
+    autoload :Treemap, "trackplot/components/treemap"
   end
+
+  # Optional integrations — loaded only when their dependencies are available
+  autoload :Component, "trackplot/component"
+  autoload :PhlexComponent, "trackplot/phlex_component"
 end

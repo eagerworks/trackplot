@@ -17,7 +17,8 @@ module Trackplot
           dashed: options.fetch(:dashed, false),
           stroke_width: options[:stroke_width] || 2,
           dot: options.fetch(:dot, true),
-          dot_size: options[:dot_size] || 4
+          dot_size: options[:dot_size] || 4,
+          y_axis: options[:y_axis]&.to_s
         }.compact
       end
     end

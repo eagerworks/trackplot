@@ -81,29 +81,64 @@ module Trackplot
       nil
     end
 
+    def data_label(**opts)
+      @components << Components::DataLabel.new(**opts)
+      nil
+    end
+
+    def brush(**opts)
+      @components << Components::Brush.new(**opts)
+      nil
+    end
+
+    def heatmap(**opts)
+      @components << Components::Heatmap.new(**opts)
+      nil
+    end
+
+    def treemap(**opts)
+      @components << Components::Treemap.new(**opts)
+      nil
+    end
+
     def render(view_context)
       chart_id = options[:id] || "trackplot-#{SecureRandom.hex(8)}"
       config = build_config
 
-      view_context.content_tag(
-        "trackplot-chart",
-        nil,
+      html_options = {
         id: chart_id,
         config: config.to_json,
         style: chart_style,
         class: css_classes
+      }
+
+      if options[:title]
+        html_options[:role] = "img"
+        html_options[:"aria-label"] = options[:title]
+      end
+
+      view_context.content_tag(
+        "trackplot-chart",
+        nil,
+        html_options
       )
     end
 
     private
 
     def build_config
-      {
+      config = {
         data: data,
         components: components.map(&:to_config),
         animate: options.fetch(:animate, true),
         theme: Theme.resolve(options[:theme])
       }
+
+      config[:title] = options[:title] if options[:title]
+      config[:description] = options[:description] if options[:description]
+      config[:empty_message] = options[:empty_message] if options[:empty_message]
+
+      config
     end
 
     def chart_style

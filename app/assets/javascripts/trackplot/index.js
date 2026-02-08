@@ -12,7 +12,7 @@ const DURATION = 750
 const EASE = d3.easeCubicOut
 const DEFAULT_MARGIN = { top: 24, right: 24, bottom: 44, left: 52 }
 
-const ALL_SERIES_TYPES = ["line", "bar", "area", "pie", "scatter", "radar", "horizontal_bar", "candlestick", "funnel"]
+const ALL_SERIES_TYPES = ["line", "bar", "area", "pie", "scatter", "radar", "horizontal_bar", "candlestick", "funnel", "heatmap", "treemap"]
 const CARTESIAN_TYPES = ["line", "bar", "area", "scatter", "candlestick"]
 
 // ─── Default Theme ──────────────────────────────────────────────────────────
@@ -124,6 +124,23 @@ function createYScale(data, seriesConfigs, height) {
   return d3.scaleLinear().domain([minVal, maxVal]).nice().range([height, 0])
 }
 
+function createYScaleRight(data, seriesConfigs, height) {
+  let maxVal = 0
+  let minVal = 0
+
+  seriesConfigs.forEach(s => {
+    if (s.data_key) {
+      const sMax = d3.max(data, d => +d[s.data_key] || 0)
+      const sMin = d3.min(data, d => +d[s.data_key] || 0)
+      if (sMax > maxVal) maxVal = sMax
+      if (sMin < minVal) minVal = sMin
+    }
+  })
+
+  if (maxVal === 0) maxVal = 1
+  return d3.scaleLinear().domain([minVal, maxVal]).nice().range([height, 0])
+}
+
 function xAccessorFor(xScale, xKey) {
   const offset = xScale.bandwidth ? xScale.bandwidth() / 2 : 0
   return xKey
@@ -171,7 +188,7 @@ function createTooltipDiv(container, theme) {
 
 function renderGrid(g, config, xScale, yScale, width, height, theme) {
   const t = theme || DEFAULT_THEME
-  const grid = g.append("g").attr("class", "trackplot-grid")
+  const grid = g.append("g").attr("class", "trackplot-grid").attr("aria-hidden", "true")
 
   if (config.horizontal !== false) {
     grid.append("g")
@@ -193,7 +210,7 @@ function renderGrid(g, config, xScale, yScale, width, height, theme) {
 
 // ─── Axes Renderer ───────────────────────────────────────────────────────────
 
-function renderAxes(g, axesConfigs, xScale, yScale, width, height, theme) {
+function renderAxes(g, axesConfigs, xScale, yScale, width, height, theme, yScaleRight) {
   const t = theme || DEFAULT_THEME
   const textColor = t.text_color
   const axisStroke = t.axis_color
@@ -226,22 +243,47 @@ function renderAxes(g, axesConfigs, xScale, yScale, width, height, theme) {
     }
 
     if (axis.direction === "y") {
-      const yG = g.append("g").attr("class", "trackplot-axis-y")
-      let gen = d3.axisLeft(yScale)
-      const fmt = resolveFormatter(axis.format)
-      if (axis.format) gen = gen.tickFormat(fmt)
-      if (axis.tick_count) gen = gen.ticks(axis.tick_count)
+      const isRight = axis.axis_id === "right"
+      const scale = isRight && yScaleRight ? yScaleRight : yScale
 
-      yG.call(gen)
-      yG.selectAll("text").attr("fill", textColor).attr("font-size", "12px").attr("font-family", font)
-      yG.selectAll("line").attr("stroke", axisStroke)
-      yG.select(".domain").attr("stroke", axisStroke)
+      if (isRight) {
+        const yG = g.append("g")
+          .attr("class", "trackplot-axis-y-right")
+          .attr("transform", `translate(${width},0)`)
+        let gen = d3.axisRight(scale)
+        const fmt = resolveFormatter(axis.format)
+        if (axis.format) gen = gen.tickFormat(fmt)
+        if (axis.tick_count) gen = gen.ticks(axis.tick_count)
 
-      if (axis.label) {
-        yG.append("text").attr("transform", "rotate(-90)")
-          .attr("x", -height / 2).attr("y", -40)
-          .attr("fill", textColor).attr("font-size", "13px").attr("font-family", font)
-          .attr("text-anchor", "middle").text(axis.label)
+        yG.call(gen)
+        yG.selectAll("text").attr("fill", textColor).attr("font-size", "12px").attr("font-family", font)
+        yG.selectAll("line").attr("stroke", axisStroke)
+        yG.select(".domain").attr("stroke", axisStroke)
+
+        if (axis.label) {
+          yG.append("text").attr("transform", "rotate(90)")
+            .attr("x", height / 2).attr("y", -40)
+            .attr("fill", textColor).attr("font-size", "13px").attr("font-family", font)
+            .attr("text-anchor", "middle").text(axis.label)
+        }
+      } else {
+        const yG = g.append("g").attr("class", "trackplot-axis-y")
+        let gen = d3.axisLeft(scale)
+        const fmt = resolveFormatter(axis.format)
+        if (axis.format) gen = gen.tickFormat(fmt)
+        if (axis.tick_count) gen = gen.ticks(axis.tick_count)
+
+        yG.call(gen)
+        yG.selectAll("text").attr("fill", textColor).attr("font-size", "12px").attr("font-family", font)
+        yG.selectAll("line").attr("stroke", axisStroke)
+        yG.select(".domain").attr("stroke", axisStroke)
+
+        if (axis.label) {
+          yG.append("text").attr("transform", "rotate(-90)")
+            .attr("x", -height / 2).attr("y", -40)
+            .attr("fill", textColor).attr("font-size", "13px").attr("font-family", font)
+            .attr("text-anchor", "middle").text(axis.label)
+        }
       }
     }
   })
@@ -264,6 +306,7 @@ function renderReferenceLines(g, refs, xScale, yScale, width, height, theme) {
 
       g.append("line")
         .attr("class", "trackplot-reference-line")
+        .attr("aria-hidden", "true")
         .attr("x1", 0).attr("x2", width)
         .attr("y1", y).attr("y2", y)
         .attr("stroke", color)
@@ -294,6 +337,7 @@ function renderReferenceLines(g, refs, xScale, yScale, width, height, theme) {
 
       g.append("line")
         .attr("class", "trackplot-reference-line")
+        .attr("aria-hidden", "true")
         .attr("x1", x).attr("x2", x)
         .attr("y1", 0).attr("y2", height)
         .attr("stroke", color)
@@ -312,6 +356,108 @@ function renderReferenceLines(g, refs, xScale, yScale, width, height, theme) {
           .text(ref.label)
       }
     }
+  })
+}
+
+// ─── Data Labels Renderer ───────────────────────────────────────────────────
+
+function renderDataLabels(g, data, xScale, yScale, xKey, seriesList, dataLabelConfig, theme) {
+  if (!dataLabelConfig) return
+  const t = theme || DEFAULT_THEME
+  const fmt = resolveFormatter(dataLabelConfig.format)
+  const position = dataLabelConfig.position || "top"
+  const fontSize = dataLabelConfig.font_size || 11
+
+  seriesList.forEach(series => {
+    if (!series.data_key) return
+    const getX = xAccessorFor(xScale, xKey)
+
+    if (series.type === "bar") {
+      const barSeries = seriesList.filter(s => s.type === "bar")
+      const bandwidth = xScale.bandwidth ? xScale.bandwidth() : 0
+      const subScale = d3.scaleBand()
+        .domain(barSeries.map(s => s.data_key))
+        .range([0, bandwidth])
+        .padding(0.05)
+
+      data.forEach((d, i) => {
+        const val = +d[series.data_key] || 0
+        const xPos = (xKey ? xScale(d[xKey]) : xScale(i)) + subScale(series.data_key) + subScale.bandwidth() / 2
+        let yPos
+        if (position === "center") {
+          yPos = yScale(val) + (yScale(0) - yScale(val)) / 2
+        } else {
+          yPos = yScale(val) - 6
+        }
+
+        g.append("text")
+          .attr("class", "trackplot-data-label")
+          .attr("x", xPos)
+          .attr("y", yPos)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .attr("fill", position === "center" ? "white" : t.text_color)
+          .attr("font-size", `${fontSize}px`)
+          .attr("font-family", t.font || FONT)
+          .attr("font-weight", "500")
+          .text(fmt(val))
+      })
+    } else if (series.type === "line" || series.type === "area" || series.type === "scatter") {
+      data.forEach((d, i) => {
+        if (d[series.data_key] == null) return
+        const val = +d[series.data_key]
+        const xPos = getX(d, i)
+        const yPos = yScale(val) - 10
+
+        g.append("text")
+          .attr("class", "trackplot-data-label")
+          .attr("x", xPos)
+          .attr("y", yPos)
+          .attr("text-anchor", "middle")
+          .attr("fill", t.text_color)
+          .attr("font-size", `${fontSize}px`)
+          .attr("font-family", t.font || FONT)
+          .attr("font-weight", "500")
+          .text(fmt(val))
+      })
+    }
+  })
+}
+
+function renderPieDataLabels(g, data, series, dataLabelConfig, width, height, theme) {
+  if (!dataLabelConfig) return
+  const t = theme || DEFAULT_THEME
+  const fmt = resolveFormatter(dataLabelConfig.format)
+  const fontSize = dataLabelConfig.font_size || 11
+
+  const radius = Math.min(width, height) / 2
+  const innerR = series.donut ? radius * 0.6 : 0
+  const labelRadius = series.donut ? (innerR + radius - 8) / 2 : radius * 0.65
+
+  const pie = d3.pie()
+    .value(d => +d[series.data_key])
+    .padAngle(series.pad_angle ?? 0.02)
+    .sort(null)
+
+  const labelArc = d3.arc().innerRadius(labelRadius).outerRadius(labelRadius)
+  const pieData = pie(data)
+
+  const labelsG = g.select(".trackplot-pie")
+  if (labelsG.empty()) return
+
+  pieData.forEach(d => {
+    const [x, y] = labelArc.centroid(d)
+    labelsG.append("text")
+      .attr("class", "trackplot-data-label")
+      .attr("x", x)
+      .attr("y", y)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("fill", dataLabelConfig.position === "outside" ? t.text_color : "white")
+      .attr("font-size", `${fontSize}px`)
+      .attr("font-family", t.font || FONT)
+      .attr("font-weight", "600")
+      .text(fmt(+d.data[series.data_key]))
   })
 }
 
@@ -364,6 +510,7 @@ function renderLine(g, data, xScale, yScale, xKey, series, animate, chartElement
       .attr("stroke", series.color)
       .attr("stroke-width", 2)
       .style("cursor", "pointer")
+      .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
 
     if (animate) {
       dots.attr("r", 0).transition().delay(DURATION).duration(300).attr("r", dotR)
@@ -391,47 +538,122 @@ function renderLine(g, data, xScale, yScale, xKey, series, animate, chartElement
 function renderBars(g, data, xScale, yScale, xKey, barSeries, animate, chartElement) {
   if (barSeries.length === 0) return
 
+  // Separate stacked and grouped bars
+  const stackGroups = {}
+  const groupedSeries = []
+  barSeries.forEach(s => {
+    if (s.stack) {
+      stackGroups[s.stack] = stackGroups[s.stack] || []
+      stackGroups[s.stack].push(s)
+    } else {
+      groupedSeries.push(s)
+    }
+  })
+
+  // Render stacked bars
+  Object.entries(stackGroups).forEach(([, group]) => {
+    renderStackedBars(g, data, xScale, yScale, xKey, group, animate, chartElement)
+  })
+
+  // Render grouped bars
+  if (groupedSeries.length > 0) {
+    const bandwidth = xScale.bandwidth()
+    const subScale = d3.scaleBand()
+      .domain(groupedSeries.map(s => s.data_key))
+      .range([0, bandwidth])
+      .padding(0.05)
+
+    groupedSeries.forEach(series => {
+      const cls = sanitizeClass(series.data_key)
+      const radius = Math.min(series.radius ?? 4, subScale.bandwidth() / 2)
+
+      const rects = g.selectAll(null)
+        .data(data)
+        .enter().append("rect")
+        .attr("class", `trackplot-bar trackplot-bar-${cls}`)
+        .attr("x", d => {
+          const base = xKey ? xScale(d[xKey]) : xScale(data.indexOf(d))
+          return base + subScale(series.data_key)
+        })
+        .attr("width", subScale.bandwidth())
+        .attr("rx", radius)
+        .attr("ry", radius)
+        .attr("fill", series.color)
+        .attr("opacity", series.opacity ?? 1)
+        .attr("y", animate ? yScale(0) : d => yScale(+d[series.data_key] || 0))
+        .attr("height", animate ? 0 : d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
+        .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
+        .style("cursor", "pointer")
+        .transition().duration(animate ? DURATION : 0).ease(EASE)
+        .delay((_, i) => animate ? i * 40 : 0)
+        .attr("y", d => yScale(+d[series.data_key] || 0))
+        .attr("height", d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
+
+      if (chartElement) {
+        g.selectAll(`.trackplot-bar-${cls}`)
+          .on("click", function (event, d) {
+            const i = data.indexOf(d)
+            dispatchClick(chartElement, {
+              chartType: "bar",
+              dataKey: series.data_key,
+              datum: d,
+              index: i,
+              value: d[series.data_key]
+            })
+          })
+      }
+    })
+  }
+}
+
+// ─── Stacked Bar Renderer ───────────────────────────────────────────────────
+
+function renderStackedBars(g, data, xScale, yScale, xKey, stackedSeries, animate, chartElement) {
+  const keys = stackedSeries.map(s => s.data_key)
+  const stack = d3.stack().keys(keys)
+  const stackedData = stack(data)
+
   const bandwidth = xScale.bandwidth()
-  const subScale = d3.scaleBand()
-    .domain(barSeries.map(s => s.data_key))
-    .range([0, bandwidth])
-    .padding(0.05)
+  const barWidth = bandwidth * 0.8
+  const barOffset = (bandwidth - barWidth) / 2
 
-  barSeries.forEach(series => {
+  stackedData.forEach((layer, idx) => {
+    const series = stackedSeries[idx]
     const cls = sanitizeClass(series.data_key)
-    const radius = Math.min(series.radius ?? 4, subScale.bandwidth() / 2)
+    const radius = idx === stackedData.length - 1 ? Math.min(series.radius ?? 4, barWidth / 2) : 0
 
-    const rects = g.selectAll(null)
-      .data(data)
+    g.selectAll(null)
+      .data(layer)
       .enter().append("rect")
-      .attr("class", `trackplot-bar trackplot-bar-${cls}`)
-      .attr("x", d => {
-        const base = xKey ? xScale(d[xKey]) : xScale(data.indexOf(d))
-        return base + subScale(series.data_key)
+      .attr("class", `trackplot-bar trackplot-stacked-bar trackplot-bar-${cls}`)
+      .attr("x", (d, i) => {
+        const base = xKey ? xScale(data[i][xKey]) : xScale(i)
+        return base + barOffset
       })
-      .attr("width", subScale.bandwidth())
+      .attr("width", barWidth)
       .attr("rx", radius)
       .attr("ry", radius)
       .attr("fill", series.color)
       .attr("opacity", series.opacity ?? 1)
-      .attr("y", animate ? yScale(0) : d => yScale(+d[series.data_key] || 0))
-      .attr("height", animate ? 0 : d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
+      .attr("y", animate ? yScale(0) : d => yScale(d[1]))
+      .attr("height", animate ? 0 : d => Math.max(0, yScale(d[0]) - yScale(d[1])))
+      .attr("aria-label", (d, i) => `${series.data_key}: ${data[i][series.data_key]}`)
       .style("cursor", "pointer")
       .transition().duration(animate ? DURATION : 0).ease(EASE)
       .delay((_, i) => animate ? i * 40 : 0)
-      .attr("y", d => yScale(+d[series.data_key] || 0))
-      .attr("height", d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
+      .attr("y", d => yScale(d[1]))
+      .attr("height", d => Math.max(0, yScale(d[0]) - yScale(d[1])))
 
     if (chartElement) {
       g.selectAll(`.trackplot-bar-${cls}`)
         .on("click", function (event, d) {
-          const i = data.indexOf(d)
+          const i = layer.indexOf(d)
           dispatchClick(chartElement, {
             chartType: "bar",
             dataKey: series.data_key,
-            datum: d,
+            datum: data[i],
             index: i,
-            value: d[series.data_key]
+            value: data[i][series.data_key]
           })
         })
     }
@@ -549,6 +771,7 @@ function renderScatter(g, data, xScale, yScale, xKey, series, animate, chartElem
     .attr("fill-opacity", series.opacity || 0.7)
     .attr("stroke", "white")
     .attr("stroke-width", 1.5)
+    .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
     .style("cursor", "pointer")
 
   if (animate) {
@@ -606,6 +829,7 @@ function renderHorizontalBars(g, data, xScale, yScale, yKey, barSeries, animate,
       .attr("ry", radius)
       .attr("fill", series.color)
       .attr("opacity", series.opacity ?? 1)
+      .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
       .style("cursor", "pointer")
       .attr("width", animate ? 0 : d => Math.max(0, xScale(+d[series.data_key] || 0)))
       .transition().duration(animate ? DURATION : 0).ease(EASE)
@@ -646,6 +870,7 @@ function renderCandlestick(g, data, xScale, yScale, xKey, series, animate, chart
     // Wick
     const wick = g.append("line")
       .attr("class", "trackplot-wick")
+      .attr("aria-hidden", "true")
       .attr("x1", x).attr("x2", x)
       .attr("y1", yScale(high)).attr("y2", yScale(low))
       .attr("stroke", color).attr("stroke-width", 1.5)
@@ -664,6 +889,7 @@ function renderCandlestick(g, data, xScale, yScale, xKey, series, animate, chart
       .attr("stroke", color)
       .attr("stroke-width", 1)
       .attr("rx", 1.5)
+      .attr("aria-label", `O:${open} H:${high} L:${low} C:${close}`)
       .style("cursor", "pointer")
 
     if (animate) {
@@ -712,6 +938,7 @@ function renderPieSlices(g, data, series, width, height, animate, theme, chartEl
     .attr("fill", (_, i) => t.colors[i % t.colors.length])
     .attr("stroke", "white")
     .attr("stroke-width", 2)
+    .attr("aria-label", d => `${series.label_key ? d.data[series.label_key] : ""}: ${d.data[series.data_key]}`)
     .style("cursor", "pointer")
 
   if (animate) {
@@ -787,6 +1014,7 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
       .attr("fill", "none")
       .attr("stroke", t.grid_color)
       .attr("stroke-width", lvl === levels ? 1.5 : 0.8)
+      .attr("aria-hidden", "true")
 
     // Level label
     if (lvl < levels) {
@@ -806,6 +1034,7 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
     center.append("line")
       .attr("x1", 0).attr("y1", 0).attr("x2", x).attr("y2", y)
       .attr("stroke", t.axis_color).attr("stroke-width", 0.8)
+      .attr("aria-hidden", "true")
 
     const lx = (radius + 18) * Math.cos(a)
     const ly = (radius + 18) * Math.sin(a)
@@ -844,6 +1073,7 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
           .attr("class", `trackplot-radar-dot`)
           .attr("cx", p[0]).attr("cy", p[1])
           .attr("fill", "white").attr("stroke", series.color).attr("stroke-width", 2)
+          .attr("aria-label", `${categories[i]}: ${data[i][series.data_key]}`)
           .style("cursor", "pointer")
 
         if (animate) {
@@ -907,6 +1137,7 @@ function renderFunnelChart(g, data, series, width, height, animate, theme, chart
       .attr("fill", color)
       .attr("stroke", "white")
       .attr("stroke-width", 2)
+      .attr("aria-label", `${labelKey ? d[labelKey] : `Stage ${i + 1}`}: ${val}`)
       .style("cursor", "pointer")
 
     if (animate) {
@@ -945,6 +1176,244 @@ function renderFunnelChart(g, data, series, width, height, animate, theme, chart
   })
 }
 
+// ─── Heatmap Renderer ───────────────────────────────────────────────────────
+
+function renderHeatmapChart(g, data, config, width, height, theme, chartElement) {
+  const t = theme || DEFAULT_THEME
+  const xKey = config.x_key
+  const yKey = config.y_key
+  const valueKey = config.value_key
+  const colorRange = config.color_range || ["#f0f9ff", "#1e40af"]
+  const radius = config.radius || 2
+
+  const xDomain = [...new Set(data.map(d => d[xKey]))]
+  const yDomain = [...new Set(data.map(d => d[yKey]))]
+
+  const xScale = d3.scaleBand().domain(xDomain).range([0, width]).padding(0.05)
+  const yScale = d3.scaleBand().domain(yDomain).range([0, height]).padding(0.05)
+
+  const extent = d3.extent(data, d => +d[valueKey])
+  const colorScale = d3.scaleSequential()
+    .domain(extent)
+    .interpolator(d3.interpolateRgb(colorRange[0], colorRange[1]))
+
+  // Render cells
+  g.selectAll(null)
+    .data(data)
+    .enter().append("rect")
+    .attr("class", "trackplot-heatmap-cell")
+    .attr("x", d => xScale(d[xKey]))
+    .attr("y", d => yScale(d[yKey]))
+    .attr("width", xScale.bandwidth())
+    .attr("height", yScale.bandwidth())
+    .attr("rx", radius)
+    .attr("ry", radius)
+    .attr("fill", d => colorScale(+d[valueKey]))
+    .attr("aria-label", d => `${d[xKey]}, ${d[yKey]}: ${d[valueKey]}`)
+    .style("cursor", "pointer")
+
+  // X axis
+  const xG = g.append("g")
+    .attr("class", "trackplot-axis-x")
+    .attr("transform", `translate(0,${height})`)
+  xG.call(d3.axisBottom(xScale))
+  xG.selectAll("text").attr("fill", t.text_color).attr("font-size", "11px").attr("font-family", t.font || FONT)
+  xG.selectAll("line").attr("stroke", t.axis_color)
+  xG.select(".domain").attr("stroke", t.axis_color)
+
+  // Y axis
+  const yG = g.append("g").attr("class", "trackplot-axis-y")
+  yG.call(d3.axisLeft(yScale))
+  yG.selectAll("text").attr("fill", t.text_color).attr("font-size", "11px").attr("font-family", t.font || FONT)
+  yG.selectAll("line").attr("stroke", t.axis_color)
+  yG.select(".domain").attr("stroke", t.axis_color)
+
+  if (chartElement) {
+    g.selectAll(".trackplot-heatmap-cell")
+      .on("click", function (event, d) {
+        dispatchClick(chartElement, {
+          chartType: "heatmap",
+          dataKey: valueKey,
+          datum: d,
+          index: data.indexOf(d),
+          value: d[valueKey]
+        })
+      })
+  }
+}
+
+// ─── Treemap Renderer ───────────────────────────────────────────────────────
+
+function renderTreemapChart(g, data, config, width, height, theme, chartElement) {
+  const t = theme || DEFAULT_THEME
+  const valueKey = config.value_key
+  const labelKey = config.label_key
+  const parentKey = config.parent_key
+
+  let root
+  if (parentKey) {
+    // Build hierarchy from parent_key
+    const grouped = d3.group(data, d => d[parentKey])
+    const children = Array.from(grouped, ([key, values]) => ({
+      name: key,
+      children: values.map(v => ({ name: labelKey ? v[labelKey] : "", value: +v[valueKey], _data: v }))
+    }))
+    root = d3.hierarchy({ name: "root", children })
+      .sum(d => d.value || 0)
+  } else {
+    // Flat data
+    const children = data.map(d => ({ name: labelKey ? d[labelKey] : "", value: +d[valueKey], _data: d }))
+    root = d3.hierarchy({ name: "root", children })
+      .sum(d => d.value || 0)
+  }
+
+  d3.treemap()
+    .size([width, height])
+    .padding(2)
+    .round(true)(root)
+
+  const themeColors = t.colors || COLORS
+  const leaves = root.leaves()
+
+  const cells = g.selectAll(null)
+    .data(leaves)
+    .enter().append("g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`)
+
+  cells.append("rect")
+    .attr("class", "trackplot-treemap-cell")
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => d.y1 - d.y0)
+    .attr("fill", (_, i) => themeColors[i % themeColors.length])
+    .attr("rx", 3)
+    .attr("ry", 3)
+    .attr("aria-label", d => `${d.data.name}: ${d.value}`)
+    .style("cursor", "pointer")
+
+  // Labels
+  cells.append("text")
+    .attr("x", 6)
+    .attr("y", 16)
+    .attr("fill", "white")
+    .attr("font-size", d => {
+      const w = d.x1 - d.x0
+      const h = d.y1 - d.y0
+      return w > 60 && h > 24 ? "12px" : w > 40 && h > 18 ? "10px" : "0px"
+    })
+    .attr("font-family", t.font || FONT)
+    .attr("font-weight", "600")
+    .text(d => d.data.name)
+    .each(function (d) {
+      const maxW = d.x1 - d.x0 - 12
+      const node = d3.select(this)
+      if (node.node().getComputedTextLength() > maxW) {
+        const text = d.data.name
+        for (let i = text.length - 1; i >= 0; i--) {
+          node.text(text.slice(0, i) + "…")
+          if (node.node().getComputedTextLength() <= maxW) break
+        }
+      }
+    })
+
+  // Value labels
+  cells.append("text")
+    .attr("x", 6)
+    .attr("y", 30)
+    .attr("fill", "rgba(255,255,255,0.75)")
+    .attr("font-size", d => {
+      const w = d.x1 - d.x0
+      const h = d.y1 - d.y0
+      return w > 50 && h > 36 ? "10px" : "0px"
+    })
+    .attr("font-family", t.font || FONT)
+    .text(d => d.value)
+
+  if (chartElement) {
+    cells.select("rect")
+      .on("click", function (event, d) {
+        const datum = d.data._data || d.data
+        dispatchClick(chartElement, {
+          chartType: "treemap",
+          dataKey: valueKey,
+          datum: datum,
+          index: leaves.indexOf(d),
+          value: d.value
+        })
+      })
+  }
+}
+
+// ─── Brush Renderer ─────────────────────────────────────────────────────────
+
+function setupBrush(svg, g, data, xScale, yScale, xKey, chart, width, height, margin, brushConfig) {
+  const brushHeight = brushConfig.height || 40
+  const brushMarginTop = 8
+
+  const brushG = svg.append("g")
+    .attr("class", "trackplot-brush")
+    .attr("transform", `translate(${margin.left},${height + margin.top + brushMarginTop})`)
+
+  const brushXScale = xScale.copy()
+  const brush = d3.brushX()
+    .extent([[0, 0], [width, brushHeight]])
+    .on("end", function (event) {
+      if (!event.selection) {
+        // Reset on double-click / clear
+        chart._brushDomain = null
+        chart.animate = false
+        chart.render()
+        return
+      }
+
+      const [x0, x1] = event.selection
+
+      if (xScale.bandwidth) {
+        // Band scale: find which bands fall in range
+        const domain = xScale.domain()
+        const filtered = domain.filter(d => {
+          const pos = xScale(d) + xScale.bandwidth() / 2
+          return pos >= x0 && pos <= x1
+        })
+        if (filtered.length > 0) {
+          chart._brushDomain = filtered
+          chart.animate = false
+          chart.render()
+        }
+      } else {
+        const d0 = xScale.invert(x0)
+        const d1 = xScale.invert(x1)
+        chart._brushDomain = [d0, d1]
+        chart.animate = false
+        chart.render()
+      }
+    })
+
+  // Mini preview area
+  const miniYScale = d3.scaleLinear()
+    .domain(yScale.domain())
+    .range([brushHeight, 0])
+
+  const seriesWithData = chart.seriesList.filter(s => s.data_key && CARTESIAN_TYPES.includes(s.type))
+  if (seriesWithData.length > 0) {
+    const firstSeries = seriesWithData[0]
+    const getX = xAccessorFor(brushXScale, xKey)
+    const miniLine = d3.line()
+      .x((d, i) => getX(d, i))
+      .y(d => miniYScale(+d[firstSeries.data_key] || 0))
+      .defined(d => d[firstSeries.data_key] != null)
+
+    brushG.append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", firstSeries.color || "#6366f1")
+      .attr("stroke-width", 1)
+      .attr("stroke-opacity", 0.5)
+      .attr("d", miniLine)
+  }
+
+  brushG.append("g").call(brush)
+}
+
 // ─── Cartesian Tooltip ───────────────────────────────────────────────────────
 
 function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, config, width, height, margin, theme) {
@@ -955,6 +1424,7 @@ function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, c
 
   const crosshair = g.append("line")
     .attr("class", "trackplot-crosshair")
+    .attr("aria-hidden", "true")
     .attr("stroke", t.axis_color).attr("stroke-width", 1).attr("stroke-dasharray", "4 3")
     .attr("y1", 0).attr("y2", height)
     .style("opacity", 0)
@@ -1131,6 +1601,61 @@ function setupFunnelTooltip(element, g, data, series, config, theme) {
     })
 }
 
+// ─── Heatmap Tooltip ────────────────────────────────────────────────────────
+
+function setupHeatmapTooltip(element, g, data, config, theme) {
+  const t = theme || DEFAULT_THEME
+  const tooltip = createTooltipDiv(element, t)
+
+  g.selectAll(".trackplot-heatmap-cell")
+    .on("mouseenter.tooltip", function (event, d) {
+      const xVal = d[config.x_key]
+      const yVal = d[config.y_key]
+      const val = d[config.value_key]
+      let html = `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:2px">${xVal}, ${yVal}</div>`
+      html += `<div style="color:${t.text_color}">${val}</div>`
+      tooltip.innerHTML = html
+      tooltip.style.opacity = "1"
+    })
+    .on("mousemove.tooltip", function (event) {
+      const [x, y] = d3.pointer(event, element)
+      tooltip.style.left = `${x + 16}px`
+      tooltip.style.top = `${y - 16}px`
+    })
+    .on("mouseleave.tooltip", function () {
+      tooltip.style.opacity = "0"
+    })
+}
+
+// ─── Treemap Tooltip ────────────────────────────────────────────────────────
+
+function setupTreemapTooltip(element, g, data, config, theme) {
+  const t = theme || DEFAULT_THEME
+  const tooltip = createTooltipDiv(element, t)
+
+  g.selectAll(".trackplot-treemap-cell")
+    .on("mouseenter.tooltip", function (event) {
+      const parent = d3.select(this.parentNode)
+      const d = parent.datum()
+      if (!d) return
+      const name = d.data.name || ""
+      const val = d.value
+      let html = ""
+      if (name) html += `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:2px">${name}</div>`
+      html += `<div style="color:${t.text_color}">${val}</div>`
+      tooltip.innerHTML = html
+      tooltip.style.opacity = "1"
+    })
+    .on("mousemove.tooltip", function (event) {
+      const [x, y] = d3.pointer(event, element)
+      tooltip.style.left = `${x + 16}px`
+      tooltip.style.top = `${y - 16}px`
+    })
+    .on("mouseleave.tooltip", function () {
+      tooltip.style.opacity = "0"
+    })
+}
+
 // ─── Legend Renderer ─────────────────────────────────────────────────────────
 
 function renderLegend(element, items, config, theme) {
@@ -1175,6 +1700,51 @@ function renderLegend(element, items, config, theme) {
   }
 }
 
+// ─── Empty State Renderer ───────────────────────────────────────────────────
+
+function renderEmptyState(element, message, theme) {
+  const t = theme || DEFAULT_THEME
+  const rect = element.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) return
+
+  const svg = d3.select(element)
+    .append("svg")
+    .attr("width", rect.width)
+    .attr("height", rect.height)
+    .attr("role", "img")
+    .attr("aria-label", message)
+
+  // Icon (empty chart placeholder)
+  const cx = rect.width / 2
+  const cy = rect.height / 2 - 12
+  const iconG = svg.append("g")
+    .attr("transform", `translate(${cx - 20},${cy - 24})`)
+    .attr("aria-hidden", "true")
+
+  iconG.append("rect")
+    .attr("x", 0).attr("y", 24).attr("width", 8).attr("height", 16)
+    .attr("rx", 2).attr("fill", t.axis_color).attr("opacity", 0.4)
+  iconG.append("rect")
+    .attr("x", 12).attr("y", 16).attr("width", 8).attr("height", 24)
+    .attr("rx", 2).attr("fill", t.axis_color).attr("opacity", 0.4)
+  iconG.append("rect")
+    .attr("x", 24).attr("y", 8).attr("width", 8).attr("height", 32)
+    .attr("rx", 2).attr("fill", t.axis_color).attr("opacity", 0.4)
+  iconG.append("rect")
+    .attr("x", 36).attr("y", 20).attr("width", 8).attr("height", 20)
+    .attr("rx", 2).attr("fill", t.axis_color).attr("opacity", 0.4)
+
+  svg.append("text")
+    .attr("x", cx)
+    .attr("y", cy + 32)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("fill", t.axis_color)
+    .attr("font-size", "14px")
+    .attr("font-family", t.font || FONT)
+    .text(message)
+}
+
 // ─── Chart Class ─────────────────────────────────────────────────────────────
 
 class Chart {
@@ -1185,6 +1755,7 @@ class Chart {
     this.animate = config.animate !== false
     this.margin = { ...DEFAULT_MARGIN }
     this.theme = config.theme || DEFAULT_THEME
+    this.chartConfig = config
 
     this.seriesList = this.components.filter(c => ALL_SERIES_TYPES.includes(c.type))
     this.axesList = this.components.filter(c => c.type === "axis")
@@ -1192,6 +1763,8 @@ class Chart {
     this.tooltipConfig = this.components.find(c => c.type === "tooltip")
     this.legendConfig = this.components.find(c => c.type === "legend")
     this.referenceLines = this.components.filter(c => c.type === "reference_line")
+    this.dataLabelConfig = this.components.find(c => c.type === "data_label")
+    this.brushConfig = this.components.find(c => c.type === "brush")
 
     const themeColors = this.theme.colors || COLORS
     this.seriesList.forEach((s, i) => { s.color = s.color || themeColors[i % themeColors.length] })
@@ -1199,6 +1772,8 @@ class Chart {
     this.isRadar = this.seriesList.some(s => s.type === "radar")
     this.isFunnel = this.seriesList.some(s => s.type === "funnel")
     this.isHorizontal = this.seriesList.some(s => s.type === "horizontal_bar")
+    this.isHeatmap = this.seriesList.some(s => s.type === "heatmap")
+    this.isTreemap = this.seriesList.some(s => s.type === "treemap")
     this.xKey = getXKey(this.components)
 
     // Apply theme background
@@ -1210,12 +1785,19 @@ class Chart {
 
   render() {
     this.clear()
-    if (this.data.length === 0) return
+
+    if (this.data.length === 0) {
+      const message = this.chartConfig.empty_message || "No data available"
+      renderEmptyState(this.element, message, this.theme)
+      return
+    }
 
     const rect = this.element.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) return
 
-    if (this.isRadar) this.renderRadar(rect.width, rect.height)
+    if (this.isHeatmap) this.renderHeatmap(rect.width, rect.height)
+    else if (this.isTreemap) this.renderTreemap(rect.width, rect.height)
+    else if (this.isRadar) this.renderRadar(rect.width, rect.height)
     else if (this.isFunnel) this.renderFunnel(rect.width, rect.height)
     else if (this.isPie) this.renderPie(rect.width, rect.height)
     else if (this.isHorizontal) this.renderHorizontalCartesian(rect.width, rect.height)
@@ -1224,25 +1806,57 @@ class Chart {
 
   renderCartesian(totalW, totalH) {
     const legendH = this.legendConfig ? 32 : 0
-    const m = this.margin
+    const brushH = this.brushConfig ? (this.brushConfig.height || 40) + 16 : 0
+    const hasRightAxis = this.axesList.some(a => a.axis_id === "right")
+    const m = { ...this.margin }
+    if (hasRightAxis) m.right = Math.max(m.right, 52)
+
     const w = totalW - m.left - m.right
-    const h = totalH - m.top - m.bottom - legendH
+    const h = totalH - m.top - m.bottom - legendH - brushH
     if (w <= 0 || h <= 0) return
 
+    const svgH = totalH - legendH
     const svg = d3.select(this.element)
-      .append("svg").attr("width", totalW).attr("height", totalH - legendH)
+      .append("svg").attr("width", totalW).attr("height", svgH)
+
+    // Accessibility
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
     const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`)
+
+    // Apply brush domain filtering if active
+    let data = this.data
+    if (this._brushDomain) {
+      if (Array.isArray(this._brushDomain) && typeof this._brushDomain[0] === "number") {
+        data = data.filter(d => {
+          const v = +d[this.xKey]
+          return v >= this._brushDomain[0] && v <= this._brushDomain[1]
+        })
+      } else if (Array.isArray(this._brushDomain)) {
+        data = data.filter(d => this._brushDomain.includes(d[this.xKey]))
+      }
+    }
 
     const hasBars = this.seriesList.some(s => s.type === "bar")
     const hasScatter = this.seriesList.some(s => s.type === "scatter")
-    let scaleType = hasBars ? "band" : detectScaleType(this.data, this.xKey)
+    let scaleType = hasBars ? "band" : detectScaleType(data, this.xKey)
     if (hasScatter && !hasBars && scaleType === "band") scaleType = "band"
-    const xScale = createXScale(this.data, this.xKey, scaleType, w)
+    const xScale = createXScale(data, this.xKey, scaleType, w)
+
+    // Split series by y-axis
+    const leftSeries = this.seriesList.filter(s => CARTESIAN_TYPES.includes(s.type) && s.y_axis !== "right")
+    const rightSeries = this.seriesList.filter(s => CARTESIAN_TYPES.includes(s.type) && s.y_axis === "right")
     const cartesianSeries = this.seriesList.filter(s => CARTESIAN_TYPES.includes(s.type))
-    const yScale = createYScale(this.data, cartesianSeries, h)
+
+    const yScale = createYScale(data, leftSeries.length > 0 ? leftSeries : cartesianSeries, h)
+    const yScaleRight = rightSeries.length > 0 ? createYScaleRight(data, rightSeries, h) : null
 
     if (this.gridConfig) renderGrid(g, this.gridConfig, xScale, yScale, w, h, this.theme)
-    renderAxes(g, this.axesList, xScale, yScale, w, h, this.theme)
+    renderAxes(g, this.axesList, xScale, yScale, w, h, this.theme, yScaleRight)
 
     // Reference lines (rendered after grid/axes, before series overlay)
     renderReferenceLines(g, this.referenceLines, xScale, yScale, w, h, this.theme)
@@ -1259,26 +1873,51 @@ class Chart {
         freeAreas.push(s)
       }
     })
-    Object.values(stackedGroups).forEach(group => renderStackedAreas(g, this.data, xScale, yScale, this.xKey, group, this.animate))
-    freeAreas.forEach(s => renderArea(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
+    Object.values(stackedGroups).forEach(group => {
+      const scale = group[0].y_axis === "right" && yScaleRight ? yScaleRight : yScale
+      renderStackedAreas(g, data, xScale, scale, this.xKey, group, this.animate)
+    })
+    freeAreas.forEach(s => {
+      const scale = s.y_axis === "right" && yScaleRight ? yScaleRight : yScale
+      renderArea(g, data, xScale, scale, this.xKey, s, this.animate, this.element)
+    })
 
     // Bars
     const barSeries = this.seriesList.filter(s => s.type === "bar")
-    if (barSeries.length > 0) renderBars(g, this.data, xScale, yScale, this.xKey, barSeries, this.animate, this.element)
+    if (barSeries.length > 0) {
+      const scale = barSeries[0].y_axis === "right" && yScaleRight ? yScaleRight : yScale
+      renderBars(g, data, xScale, scale, this.xKey, barSeries, this.animate, this.element)
+    }
 
     // Candlestick
-    this.seriesList.filter(s => s.type === "candlestick").forEach(s => renderCandlestick(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
+    this.seriesList.filter(s => s.type === "candlestick").forEach(s => renderCandlestick(g, data, xScale, yScale, this.xKey, s, this.animate, this.element))
 
     // Lines
-    this.seriesList.filter(s => s.type === "line").forEach(s => renderLine(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
+    this.seriesList.filter(s => s.type === "line").forEach(s => {
+      const scale = s.y_axis === "right" && yScaleRight ? yScaleRight : yScale
+      renderLine(g, data, xScale, scale, this.xKey, s, this.animate, this.element)
+    })
 
     // Scatter
-    this.seriesList.filter(s => s.type === "scatter").forEach(s => renderScatter(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
+    this.seriesList.filter(s => s.type === "scatter").forEach(s => {
+      const scale = s.y_axis === "right" && yScaleRight ? yScaleRight : yScale
+      renderScatter(g, data, xScale, scale, this.xKey, s, this.animate, this.element)
+    })
+
+    // Data labels
+    if (this.dataLabelConfig) {
+      renderDataLabels(g, data, xScale, yScale, this.xKey, cartesianSeries, this.dataLabelConfig, this.theme)
+    }
 
     if (this.tooltipConfig) {
-      setupCartesianTooltip(this.element, g, this.data, xScale, yScale, this.xKey, cartesianSeries, this.tooltipConfig, w, h, m, this.theme)
+      setupCartesianTooltip(this.element, g, data, xScale, yScale, this.xKey, cartesianSeries, this.tooltipConfig, w, h, m, this.theme)
     }
     if (this.legendConfig) renderLegend(this.element, this.seriesList.filter(s => s.data_key), this.legendConfig, this.theme)
+
+    // Brush
+    if (this.brushConfig && !this._brushDomain) {
+      setupBrush(svg, g, this.data, xScale, yScale, this.xKey, this, w, h, m, this.brushConfig)
+    }
   }
 
   renderHorizontalCartesian(totalW, totalH) {
@@ -1290,6 +1929,13 @@ class Chart {
 
     const svg = d3.select(this.element)
       .append("svg").attr("width", totalW).attr("height", totalH - legendH)
+
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
     const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`)
 
     const catKey = this.xKey
@@ -1303,7 +1949,7 @@ class Chart {
     const xScale = d3.scaleLinear().domain([0, maxVal]).nice().range([0, w])
 
     if (this.gridConfig) {
-      const grid = g.append("g").attr("class", "trackplot-grid")
+      const grid = g.append("g").attr("class", "trackplot-grid").attr("aria-hidden", "true")
       grid.append("g")
         .call(d3.axisBottom(xScale).tickSize(h).tickFormat(""))
         .attr("transform", `translate(0,0)`)
@@ -1382,9 +2028,22 @@ class Chart {
     const legendH = this.legendConfig ? 40 : 0
     const chartH = totalH - legendH
     const svg = d3.select(this.element).append("svg").attr("width", totalW).attr("height", chartH)
+
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
     const g = svg.append("g")
 
     renderPieSlices(g, this.data, pieSeries, totalW, chartH, this.animate, this.theme, this.element)
+
+    // Data labels on pie
+    if (this.dataLabelConfig) {
+      renderPieDataLabels(g, this.data, pieSeries, this.dataLabelConfig, totalW, chartH, this.theme)
+    }
+
     if (this.tooltipConfig) setupPieTooltip(this.element, g, this.data, pieSeries, this.tooltipConfig, this.theme)
 
     if (this.legendConfig) {
@@ -1402,6 +2061,13 @@ class Chart {
     const legendH = this.legendConfig ? 40 : 0
     const chartH = totalH - legendH
     const svg = d3.select(this.element).append("svg").attr("width", totalW).attr("height", chartH)
+
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
     const g = svg.append("g")
 
     const radarSeries = this.seriesList.filter(s => s.type === "radar")
@@ -1417,6 +2083,13 @@ class Chart {
     const legendH = this.legendConfig ? 40 : 0
     const chartH = totalH - legendH
     const svg = d3.select(this.element).append("svg").attr("width", totalW).attr("height", chartH)
+
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
     const g = svg.append("g")
 
     renderFunnelChart(g, this.data, funnelSeries, totalW, chartH, this.animate, this.theme, this.element)
@@ -1433,6 +2106,49 @@ class Chart {
     }
   }
 
+  renderHeatmap(totalW, totalH) {
+    const heatmapConfig = this.seriesList.find(s => s.type === "heatmap")
+    if (!heatmapConfig) return
+
+    const m = { ...this.margin, left: 60 }
+    const w = totalW - m.left - m.right
+    const h = totalH - m.top - m.bottom
+    if (w <= 0 || h <= 0) return
+
+    const svg = d3.select(this.element)
+      .append("svg").attr("width", totalW).attr("height", totalH)
+
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
+    const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`)
+    renderHeatmapChart(g, this.data, heatmapConfig, w, h, this.theme, this.element)
+    if (this.tooltipConfig) setupHeatmapTooltip(this.element, g, this.data, heatmapConfig, this.theme)
+  }
+
+  renderTreemap(totalW, totalH) {
+    const treemapConfig = this.seriesList.find(s => s.type === "treemap")
+    if (!treemapConfig) return
+
+    const legendH = this.legendConfig ? 40 : 0
+    const chartH = totalH - legendH
+    const svg = d3.select(this.element)
+      .append("svg").attr("width", totalW).attr("height", chartH)
+
+    if (this.chartConfig.title) {
+      svg.attr("role", "img").attr("aria-label", this.chartConfig.title)
+      svg.append("title").text(this.chartConfig.title)
+      if (this.chartConfig.description) svg.append("desc").text(this.chartConfig.description)
+    }
+
+    const g = svg.append("g")
+    renderTreemapChart(g, this.data, treemapConfig, totalW, chartH, this.theme, this.element)
+    if (this.tooltipConfig) setupTreemapTooltip(this.element, g, this.data, treemapConfig, this.theme)
+  }
+
   clear() {
     // Preserve background on re-render
     const bg = this.element.style.background
@@ -1444,6 +2160,19 @@ class Chart {
     this.resizeObserver?.disconnect()
     this.clear()
   }
+}
+
+// ─── Export Helpers ──────────────────────────────────────────────────────────
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // ─── Custom Element ──────────────────────────────────────────────────────────
@@ -1522,6 +2251,64 @@ class TrackplotElement extends HTMLElement {
     this._rebuildChart(false)
   }
 
+  /** Append new data points and re-render with sliding window. */
+  appendData(newPoints, { maxPoints = 50 } = {}) {
+    if (!this.chartConfig) return
+    const current = this.chartConfig.data || []
+    this.chartConfig.data = [...current, ...newPoints].slice(-maxPoints)
+    this._rebuildChart(false)
+    this.dispatchEvent(new CustomEvent("trackplot:data-update", {
+      bubbles: true,
+      detail: { count: this.chartConfig.data.length }
+    }))
+  }
+
+  /** Export chart as SVG file download. Returns a Promise. */
+  exportSVG(filename = "chart.svg") {
+    return new Promise((resolve) => {
+      const svgEl = this.querySelector("svg")
+      if (!svgEl) { resolve(null); return }
+
+      const clone = svgEl.cloneNode(true)
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+      const blob = new Blob([clone.outerHTML], { type: "image/svg+xml;charset=utf-8" })
+      triggerDownload(blob, filename)
+      resolve(blob)
+    })
+  }
+
+  /** Export chart as PNG file download. Returns a Promise. */
+  exportPNG(scale = 2, filename = "chart.png") {
+    return new Promise((resolve, reject) => {
+      const svgEl = this.querySelector("svg")
+      if (!svgEl) { resolve(null); return }
+
+      const clone = svgEl.cloneNode(true)
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+      const svgData = new XMLSerializer().serializeToString(clone)
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
+      const url = URL.createObjectURL(svgBlob)
+
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+        canvas.width = svgEl.clientWidth * scale
+        canvas.height = svgEl.clientHeight * scale
+        const ctx = canvas.getContext("2d")
+        ctx.scale(scale, scale)
+        ctx.drawImage(img, 0, 0)
+        URL.revokeObjectURL(url)
+
+        canvas.toBlob(blob => {
+          triggerDownload(blob, filename)
+          resolve(blob)
+        }, "image/png")
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   // ── Internals ───────────────────────────────────────────
 
   _rebuildChart(animate) {
@@ -1539,3 +2326,117 @@ class TrackplotElement extends HTMLElement {
 }
 
 customElements.define("trackplot-chart", TrackplotElement)
+
+// ─── Sparkline Custom Element ───────────────────────────────────────────────
+
+class SparklineElement extends HTMLElement {
+  connectedCallback() {
+    try {
+      this.sparkConfig = JSON.parse(this.getAttribute("config"))
+    } catch (e) {
+      console.error("Trackplot: invalid sparkline config JSON", e)
+      return
+    }
+
+    this.innerHTML = ""
+    requestAnimationFrame(() => this._render())
+
+    this.resizeObserver = new ResizeObserver(() => {
+      clearTimeout(this._resizeTimeout)
+      this._resizeTimeout = setTimeout(() => this._render(), 100)
+    })
+    this.resizeObserver.observe(this)
+  }
+
+  disconnectedCallback() {
+    clearTimeout(this._resizeTimeout)
+    this.resizeObserver?.disconnect()
+  }
+
+  _render() {
+    this.innerHTML = ""
+    const rect = this.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return
+
+    const { data, key, type, color, fill, stroke_width, dot } = this.sparkConfig
+    if (!data || data.length === 0) return
+
+    const w = rect.width
+    const h = rect.height
+    const pad = 2
+
+    const svg = d3.select(this).append("svg")
+      .attr("width", w).attr("height", h)
+      .attr("aria-hidden", "true")
+      .style("display", "block")
+
+    const values = data.map(d => +d[key]).filter(v => !isNaN(v))
+    if (values.length === 0) return
+
+    const xScale = d3.scaleLinear().domain([0, values.length - 1]).range([pad, w - pad])
+    const yScale = d3.scaleLinear().domain(d3.extent(values)).range([h - pad, pad])
+
+    if (type === "bar") {
+      const barW = Math.max(1, (w - pad * 2) / values.length - 1)
+      svg.selectAll(null)
+        .data(values)
+        .enter().append("rect")
+        .attr("x", (_, i) => xScale(i) - barW / 2)
+        .attr("y", v => yScale(v))
+        .attr("width", barW)
+        .attr("height", v => Math.max(0, h - pad - yScale(v)))
+        .attr("fill", color || "#6366f1")
+        .attr("rx", 1)
+    } else if (type === "area") {
+      const areaGen = d3.area()
+        .x((_, i) => xScale(i))
+        .y0(h - pad)
+        .y1((_, i) => yScale(values[i]))
+        .curve(d3.curveMonotoneX)
+
+      svg.append("path")
+        .datum(values)
+        .attr("fill", fill || color || "#6366f1")
+        .attr("fill-opacity", 0.2)
+        .attr("d", areaGen)
+
+      const lineGen = d3.line()
+        .x((_, i) => xScale(i))
+        .y((_, i) => yScale(values[i]))
+        .curve(d3.curveMonotoneX)
+
+      svg.append("path")
+        .datum(values)
+        .attr("fill", "none")
+        .attr("stroke", color || "#6366f1")
+        .attr("stroke-width", stroke_width || 1.5)
+        .attr("d", lineGen)
+    } else {
+      // line (default)
+      const lineGen = d3.line()
+        .x((_, i) => xScale(i))
+        .y((_, i) => yScale(values[i]))
+        .curve(d3.curveMonotoneX)
+
+      svg.append("path")
+        .datum(values)
+        .attr("fill", "none")
+        .attr("stroke", color || "#6366f1")
+        .attr("stroke-width", stroke_width || 1.5)
+        .attr("stroke-linecap", "round")
+        .attr("d", lineGen)
+
+      // Last dot indicator
+      if (dot !== false) {
+        const lastIdx = values.length - 1
+        svg.append("circle")
+          .attr("cx", xScale(lastIdx))
+          .attr("cy", yScale(values[lastIdx]))
+          .attr("r", 2.5)
+          .attr("fill", color || "#6366f1")
+      }
+    }
+  }
+}
+
+customElements.define("trackplot-sparkline", SparklineElement)

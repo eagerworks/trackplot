@@ -16,7 +16,8 @@ module Trackplot
           curve: options.fetch(:curve, false),
           opacity: options[:opacity] || 0.3,
           stroke_width: options[:stroke_width] || 2,
-          stack: options[:stack]
+          stack: options[:stack],
+          y_axis: options[:y_axis]&.to_s
         }.compact
       end
     end

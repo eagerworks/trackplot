@@ -8,6 +8,7 @@
   }
   h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
   p.subtitle { color: #64748b; margin-bottom: 40px; font-size: 15px; }
+  h3 { font-size: 18px; font-weight: 600; color: #475569; margin: 40px 0 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
@@ -25,10 +26,15 @@
   .card h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
   .card p { font-size: 13px; color: #94a3b8; margin: 0 0 16px; }
   .full-width { grid-column: 1 / -1; }
+  .sparkline-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .sparkline-table th, .sparkline-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  .sparkline-table th { color: #64748b; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+  .export-btn { padding: 6px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; margin-right: 8px; }
+  .export-btn:hover { background: #f1f5f9; }
 </style>
 
 <h1>Trackplot Demo</h1>
-<p class="subtitle">All 10 chart types rendered with the Trackplot Ruby DSL and D3.js</p>
+<p class="subtitle">All chart types and features rendered with the Trackplot Ruby DSL and D3.js</p>
 
 <div class="grid">
 
@@ -36,7 +42,7 @@
   <div class="card">
     <h2>Line Chart</h2>
     <p>Monthly revenue and profit with smooth curves</p>
-    <%= trackplot_chart @sales_data, height: "280px" do |c| %>
+    <%= trackplot_chart @sales_data, height: "280px", title: "Monthly Revenue & Profit" do |c| %>
       <% c.line :revenue, color: "#6366f1", curve: true %>
       <% c.line :profit, color: "#10b981", curve: true, dashed: true %>
       <% c.axis :x, data_key: :month %>
@@ -47,15 +53,16 @@
     <% end %>
   </div>
 
-  <%# ─── Bar Chart ──────────────────────────────────────── %>
+  <%# ─── Bar Chart with Data Labels ──────────────────────── %>
   <div class="card">
-    <h2>Bar Chart</h2>
-    <p>Sales by product category</p>
-    <%= trackplot_chart @category_data, height: "280px" do |c| %>
+    <h2>Bar Chart + Data Labels</h2>
+    <p>Sales by category with values displayed on top</p>
+    <%= trackplot_chart @category_data, height: "280px", title: "Sales by Category" do |c| %>
       <% c.bar :sales, color: "#06b6d4" %>
       <% c.axis :x, data_key: :name %>
       <% c.axis :y %>
       <% c.tooltip %>
+      <% c.data_label format: :integer, position: :top %>
       <% c.grid %>
     <% end %>
   </div>
@@ -88,6 +95,37 @@
     <% end %>
   </div>
 
+  <%# ─── Stacked Bar ────────────────────────────────────── %>
+  <div class="card">
+    <h2>Stacked Bar</h2>
+    <p>Revenue and profit stacked per month</p>
+    <%= trackplot_chart @sales_data, height: "280px", title: "Stacked Revenue & Profit" do |c| %>
+      <% c.bar :profit, stack: "main", color: "#10b981" %>
+      <% c.bar :costs, stack: "main", color: "#f59e0b" %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.legend %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Dual Y-Axis ────────────────────────────────────── %>
+  <div class="card">
+    <h2>Dual Y-Axis</h2>
+    <p>Revenue (left) vs order count (right)</p>
+    <%= trackplot_chart @dual_axis_data, height: "280px", title: "Revenue vs Orders" do |c| %>
+      <% c.bar :revenue, color: "#6366f1", opacity: 0.6 %>
+      <% c.line :orders, color: "#ef4444", curve: true, y_axis: :right %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y, format: :currency %>
+      <% c.axis :y, axis_id: :right, format: :integer %>
+      <% c.tooltip format: :integer %>
+      <% c.legend %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
   <%# ─── Pie Chart ──────────────────────────────────────── %>
   <div class="card">
     <h2>Pie Chart</h2>
@@ -99,12 +137,13 @@
     <% end %>
   </div>
 
-  <%# ─── Donut Chart ────────────────────────────────────── %>
+  <%# ─── Donut Chart with Data Labels ────────────────────── %>
   <div class="card">
-    <h2>Donut Chart</h2>
-    <p>Same data as pie, with donut style</p>
+    <h2>Donut + Data Labels</h2>
+    <p>Same data as pie, with donut style and labels</p>
     <%= trackplot_chart @market_share, height: "300px" do |c| %>
       <% c.pie :value, label_key: :segment, donut: true %>
+      <% c.data_label format: :integer %>
       <% c.tooltip %>
       <% c.legend %>
     <% end %>
@@ -172,6 +211,51 @@
     <% end %>
   </div>
 
+  <%# ─── Heatmap ────────────────────────────────────────── %>
+  <div class="card full-width">
+    <h2>Heatmap</h2>
+    <p>Activity by day and hour</p>
+    <%= trackplot_chart @heatmap_data, height: "300px", title: "Weekly Activity Heatmap" do |c| %>
+      <% c.heatmap x_key: :day, y_key: :hour, value_key: :count, color_range: ["#f0f9ff", "#1e40af"] %>
+      <% c.tooltip %>
+    <% end %>
+  </div>
+
+  <%# ─── Treemap ────────────────────────────────────────── %>
+  <div class="card">
+    <h2>Treemap</h2>
+    <p>Technology ecosystem by adoption</p>
+    <%= trackplot_chart @treemap_data, height: "300px", title: "Tech Ecosystem" do |c| %>
+      <% c.treemap value_key: :size, label_key: :name, parent_key: :category %>
+      <% c.tooltip %>
+    <% end %>
+  </div>
+
+  <%# ─── Empty State ────────────────────────────────────── %>
+  <div class="card">
+    <h2>Empty State</h2>
+    <p>Chart with no data shows a friendly message</p>
+    <%= trackplot_chart [], height: "280px", empty_message: "No sales data for this period" do |c| %>
+      <% c.line :revenue %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+    <% end %>
+  </div>
+
+  <%# ─── Brush / Zoom ───────────────────────────────────── %>
+  <div class="card full-width">
+    <h2>Brush Selection</h2>
+    <p>Drag to select a range on the mini preview below the chart</p>
+    <%= trackplot_chart @sales_data, height: "360px", title: "Revenue with Brush" do |c| %>
+      <% c.line :revenue, color: "#6366f1", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y, format: :currency %>
+      <% c.tooltip format: :currency %>
+      <% c.grid %>
+      <% c.brush axis: :x %>
+    <% end %>
+  </div>
+
   <%# ─── Combined Chart ─────────────────────────────────── %>
   <div class="card">
     <h2>Combined (Bar + Line)</h2>
@@ -191,7 +275,7 @@
   <div class="card" style="background: #1e1e2e; border-color: #2d3748;">
     <h2 style="color: #e2e8f0;">Dark Theme</h2>
     <p style="color: #718096;">Line chart with dark theme and reference line</p>
-    <%= trackplot_chart @sales_data, height: "280px", theme: :dark do |c| %>
+    <%= trackplot_chart @sales_data, height: "280px", theme: :dark, title: "Dark Theme Revenue", description: "Monthly revenue with dark theme styling" do |c| %>
       <% c.line :revenue, curve: true %>
       <% c.line :profit, curve: true %>
       <% c.axis :x, data_key: :month %>
@@ -218,6 +302,48 @@
     <% end %>
   </div>
 
+  <%# ─── Export Demo ─────────────────────────────────────── %>
+  <div class="card">
+    <h2>Export to PNG / SVG</h2>
+    <p>Click the buttons below to download the chart</p>
+    <%= trackplot_chart @sales_data, id: "export-demo", height: "250px" do |c| %>
+      <% c.line :revenue, color: "#6366f1", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.grid %>
+    <% end %>
+    <div style="margin-top: 12px;">
+      <button class="export-btn" onclick="document.getElementById('export-demo').exportPNG()">Export PNG</button>
+      <button class="export-btn" onclick="document.getElementById('export-demo').exportSVG()">Export SVG</button>
+    </div>
+  </div>
+
+  <%# ─── Sparklines Demo ─────────────────────────────────── %>
+  <div class="card full-width">
+    <h2>Sparklines</h2>
+    <p>Inline mini-charts for tables and dashboards</p>
+    <table class="sparkline-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Trend (Line)</th>
+          <th>Trend (Bar)</th>
+          <th>Trend (Area)</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Revenue</td>
+          <td><%= trackplot_sparkline @sparkline_data, key: :value, type: :line, color: "#6366f1" %></td>
+          <td><%= trackplot_sparkline @sparkline_data, key: :value, type: :bar, color: "#06b6d4" %></td>
+          <td><%= trackplot_sparkline @sparkline_data, key: :value, type: :area, color: "#10b981" %></td>
+          <td><strong>$<%= @sparkline_data.last[:value] %></strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <%# ─── Click Events Demo ───────────────────────────────── %>
   <div class="card">
     <h2>Click Events</h2>
@@ -238,6 +364,32 @@
     </script>
   </div>
 
+  <%# ─── Real-time Append Demo ───────────────────────────── %>
+  <div class="card">
+    <h2>Real-time Append</h2>
+    <p>Click the button to add a random data point</p>
+    <%= trackplot_chart @sales_data.first(3), id: "live-chart", height: "250px" do |c| %>
+      <% c.line :revenue, color: "#6366f1", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y %>
+      <% c.tooltip %>
+      <% c.grid %>
+    <% end %>
+    <div style="margin-top: 12px;">
+      <button class="export-btn" onclick="addRandomPoint()">Add Data Point</button>
+    </div>
+    <script>
+      var pointIdx = 0
+      var months = ["Aug", "Sep", "Oct", "Nov", "Dec"]
+      function addRandomPoint() {
+        var chart = document.getElementById("live-chart")
+        var name = months[pointIdx % months.length]
+        pointIdx++
+        chart.appendData([{month: name, revenue: Math.floor(Math.random() * 5000) + 3000}], {maxPoints: 7})
+      }
+    </script>
+  </div>
+
   <%# ─── Turbo Stream–friendly Chart ─────────────────────── %>
   <div class="card">
     <h2>Turbo-Ready Chart</h2>
@@ -249,10 +401,6 @@
       <% c.tooltip format: :currency %>
       <% c.grid %>
     <% end %>
-    <script>
-      // Example: programmatic data update (e.g., from a Stimulus controller)
-      // document.getElementById("revenue-live").updateData(newDataArray)
-    </script>
   </div>
 
 </div>

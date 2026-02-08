@@ -5,5 +5,10 @@ module Trackplot
       capture(builder, &block) if block_given?
       builder.render(self)
     end
+
+    def trackplot_sparkline(data, key:, **options)
+      builder = SparklineBuilder.new(data, key: key, **options)
+      builder.render(self)
+    end
   end
 end
