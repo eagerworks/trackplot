@@ -629,10 +629,16 @@ All config interfaces are exported: `ChartConfig`, `LineConfig`, `BarConfig`, `T
 
 ## Development
 
-Run the test suite:
+Run the Ruby test suite:
 
 ```bash
 ruby -Ilib -Itest -e "Dir['test/**/*_test.rb'].each { |f| require File.expand_path(f) }"
+```
+
+Run the JavaScript test suite (Vitest + jsdom):
+
+```bash
+npm test
 ```
 
 Boot the demo app:
