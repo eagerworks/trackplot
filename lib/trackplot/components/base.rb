@@ -12,7 +12,7 @@ module Trackplot
       end
 
       def to_config
-        { type: type }.merge(options).compact
+        {type: type}.merge(options).compact
       end
     end
   end

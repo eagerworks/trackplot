@@ -2,7 +2,7 @@ module Trackplot
   module Components
     class ReferenceLine < Base
       def initialize(**options)
-        super(**options)
+        super
       end
 
       def to_config

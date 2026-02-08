@@ -5,3 +5,4 @@ gemspec
 gem "rake"
 gem "minitest"
 gem "rails", ">= 7.0"
+gem "standard"

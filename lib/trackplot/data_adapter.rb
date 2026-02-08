@@ -2,7 +2,7 @@ module Trackplot
   class DataAdapter
     def self.normalize(data)
       records = case data
-      when -> (d) { defined?(ActiveRecord::Relation) && d.is_a?(ActiveRecord::Relation) }
+      when ->(d) { defined?(ActiveRecord::Relation) && d.is_a?(ActiveRecord::Relation) }
         data.map { |record| to_string_hash(record.attributes) }
       when Array
         data.map { |item| coerce_record(item) }
@@ -19,9 +19,9 @@ module Trackplot
       case item
       when Hash
         item
-      when -> (i) { i.respond_to?(:attributes) }
+      when ->(i) { i.respond_to?(:attributes) }
         item.attributes
-      when -> (i) { i.respond_to?(:to_h) }
+      when ->(i) { i.respond_to?(:to_h) }
         item.to_h
       else
         raise ArgumentError, "Trackplot: cannot convert #{item.class} to chart data. Expected Hash, ActiveRecord, or an object responding to #to_h."

@@ -5,4 +5,6 @@ Rake::TestTask.new(:test) do |t|
   t.pattern = "test/**/*_test.rb"
 end
 
-task default: :test
+require "standard/rake"
+
+task default: %i[test standard]

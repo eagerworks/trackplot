@@ -2,7 +2,7 @@ require_relative "../test_helper"
 
 class ChartBuilderTest < Minitest::Test
   def sample_data
-    [{ "month" => "Jan", "revenue" => 100, "profit" => 50 }]
+    [{"month" => "Jan", "revenue" => 100, "profit" => 50}]
   end
 
   def test_collects_line_component
@@ -96,10 +96,10 @@ class ChartBuilderTest < Minitest::Test
   end
 
   def test_data_is_normalized
-    raw = [{ month: "Jan", revenue: 100 }]
+    raw = [{month: "Jan", revenue: 100}]
     builder = Trackplot::ChartBuilder.new(raw)
 
-    assert_equal [{ "month" => "Jan", "revenue" => 100 }], builder.data
+    assert_equal [{"month" => "Jan", "revenue" => 100}], builder.data
   end
 
   def test_default_options
@@ -203,7 +203,7 @@ class ChartBuilderTest < Minitest::Test
   end
 
   def test_theme_resolve_custom_hash
-    theme = Trackplot::Theme.resolve({ colors: ["#ff0000"], background: "#111" })
+    theme = Trackplot::Theme.resolve({colors: ["#ff0000"], background: "#111"})
     assert_equal ["#ff0000"], theme[:colors]
     assert_equal "#111", theme[:background]
     # Inherits defaults for unspecified keys

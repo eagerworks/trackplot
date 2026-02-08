@@ -50,7 +50,7 @@ module Trackplot
     def self.resolve(option)
       case option
       when nil then PRESETS[:default]
-      when Symbol then PRESETS.fetch(option) { raise ArgumentError, "Unknown theme: #{option}. Available: #{PRESETS.keys.join(', ')}" }
+      when Symbol then PRESETS.fetch(option) { raise ArgumentError, "Unknown theme: #{option}. Available: #{PRESETS.keys.join(", ")}" }
       when Hash then PRESETS[:default].merge(option.transform_keys(&:to_sym))
       else raise ArgumentError, "Theme must be a Symbol, Hash, or nil"
       end

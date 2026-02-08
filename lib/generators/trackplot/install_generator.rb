@@ -8,11 +8,11 @@ module Trackplot
 
         if File.exist?(js_file)
           content = File.read(js_file)
-          unless content.include?('import "trackplot"')
+          if content.include?('import "trackplot"')
+            say "trackplot import already present in application.js", :yellow
+          else
             append_to_file js_file, "\nimport \"trackplot\"\n"
             say "Added trackplot import to application.js", :green
-          else
-            say "trackplot import already present in application.js", :yellow
           end
         else
           say "Could not find app/javascript/application.js — please add `import \"trackplot\"` manually", :red
