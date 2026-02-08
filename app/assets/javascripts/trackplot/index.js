@@ -2189,10 +2189,17 @@ class TrackplotElement extends HTMLElement {
     // Clear stale content from Turbo cache restoration or Turbo Stream replace
     this.innerHTML = ""
 
+    // Drill-down state
+    this._drillConfig = this.chartConfig.components?.find(c => c.type === "drilldown") || null
+    this._drillStack = []
+    this._originalData = this.chartConfig.data ? [...this.chartConfig.data] : []
+    this._drillClickHandler = null
+
     this.chart = new Chart(this, this.chartConfig)
     requestAnimationFrame(() => {
       this.chart.render()
       this._dispatchRender()
+      if (this._drillConfig) this._setupDrillListener()
     })
 
     this._resizeTimeout = null
@@ -2216,6 +2223,7 @@ class TrackplotElement extends HTMLElement {
     clearTimeout(this._resizeTimeout)
     this.resizeObserver?.disconnect()
     document.removeEventListener("turbo:before-cache", this._turboCacheHandler)
+    this._removeDrillListener()
     this.chart?.destroy()
     this.chart = null
   }
@@ -2223,13 +2231,19 @@ class TrackplotElement extends HTMLElement {
   static get observedAttributes() { return ["config"] }
 
   attributeChangedCallback(name, oldVal, newVal) {
-    if (name === "config" && oldVal !== null && newVal) {
+    if (name === "config" && oldVal !== null && newVal && !this._internalUpdate) {
       try {
         this.chartConfig = JSON.parse(newVal)
+        this._drillConfig = this.chartConfig.components?.find(c => c.type === "drilldown") || null
+        this._drillStack = []
+        this._originalData = this.chartConfig.data ? [...this.chartConfig.data] : []
+        this._removeDrillListener()
+        this._removeBreadcrumb()
         this.chart = new Chart(this, this.chartConfig)
         this.chart.animate = false
         this.chart.render()
         this._dispatchRender()
+        if (this._drillConfig) this._setupDrillListener()
       } catch (e) {
         console.error("Trackplot: invalid config JSON", e)
       }
@@ -2241,6 +2255,9 @@ class TrackplotElement extends HTMLElement {
   /** Replace chart data and re-render without animation. */
   updateData(newData) {
     if (!this.chartConfig) return
+    this._drillStack = []
+    this._originalData = [...newData]
+    this._removeBreadcrumb()
     this.chartConfig.data = newData
     this._rebuildChart(false)
   }
@@ -2248,14 +2265,27 @@ class TrackplotElement extends HTMLElement {
   /** Replace the full config object and re-render. */
   updateConfig(config) {
     this.chartConfig = config
+    this._drillConfig = config.components?.find(c => c.type === "drilldown") || null
+    this._drillStack = []
+    this._originalData = config.data ? [...config.data] : []
+    this._removeDrillListener()
+    this._removeBreadcrumb()
     this._rebuildChart(false)
+    if (this._drillConfig) this._setupDrillListener()
   }
 
   /** Append new data points and re-render with sliding window. */
   appendData(newPoints, { maxPoints = 50 } = {}) {
     if (!this.chartConfig) return
+    // Reset to root level if drilled in
+    if (this._drillStack.length > 0) {
+      this._drillStack = []
+      this._removeBreadcrumb()
+      this.chartConfig.data = this._originalData
+    }
     const current = this.chartConfig.data || []
     this.chartConfig.data = [...current, ...newPoints].slice(-maxPoints)
+    this._originalData = [...this.chartConfig.data]
     this._rebuildChart(false)
     this.dispatchEvent(new CustomEvent("trackplot:data-update", {
       bubbles: true,
@@ -2316,12 +2346,147 @@ class TrackplotElement extends HTMLElement {
     this.chart.animate = animate
     this.chart.render()
     // Sync attribute so Turbo morphing sees current state
+    this._internalUpdate = true
     this.setAttribute("config", JSON.stringify(this.chartConfig))
+    this._internalUpdate = false
     this._dispatchRender()
   }
 
   _dispatchRender() {
     this.dispatchEvent(new CustomEvent("trackplot:render", { bubbles: true }))
+  }
+
+  // ── Drill-down Public API ────────────────────────────────
+
+  /** Go back one drill level. Returns false if already at root. */
+  drillUp() {
+    if (this._drillStack.length === 0) return false
+    const prev = this._drillStack.pop()
+    this.chartConfig.data = prev.data
+    this._rebuildChart(true)
+    this._renderBreadcrumb()
+    this.dispatchEvent(new CustomEvent("trackplot:drillup", {
+      bubbles: true,
+      detail: { level: this._drillStack.length }
+    }))
+    return true
+  }
+
+  /** Reset to root data from any drill depth. Returns false if already at root. */
+  drillReset() {
+    if (this._drillStack.length === 0) return false
+    this._drillStack = []
+    this.chartConfig.data = [...this._originalData]
+    this._rebuildChart(true)
+    this._removeBreadcrumb()
+    this.dispatchEvent(new CustomEvent("trackplot:drillup", {
+      bubbles: true,
+      detail: { level: 0 }
+    }))
+    return true
+  }
+
+  // ── Drill-down Internals ─────────────────────────────────
+
+  _setupDrillListener() {
+    this._removeDrillListener()
+    this._drillClickHandler = (e) => {
+      const { chartType, datum } = e.detail
+      if (chartType !== "bar" && chartType !== "pie" && chartType !== "heatmap" && chartType !== "treemap") return
+
+      const drillKey = this._drillConfig.key
+      const children = datum?.[drillKey]
+      if (!Array.isArray(children) || children.length === 0) return
+
+      e.stopImmediatePropagation()
+
+      // Determine label from the datum
+      const xAxis = this.chartConfig.components?.find(c => c.type === "axis" && c.direction === "x")
+      const pieSeries = this.chartConfig.components?.find(c => c.type === "pie")
+      let label
+      if (chartType === "pie" && pieSeries?.label_key) {
+        label = datum[pieSeries.label_key]
+      } else if (xAxis?.data_key) {
+        label = datum[xAxis.data_key]
+      }
+      label = label ?? `Level ${this._drillStack.length + 1}`
+
+      this._drillStack.push({ data: this.chartConfig.data, label })
+      this.chartConfig.data = children
+      this._rebuildChart(true)
+      this._renderBreadcrumb()
+      this.dispatchEvent(new CustomEvent("trackplot:drilldown", {
+        bubbles: true,
+        detail: { level: this._drillStack.length, datum, label }
+      }))
+    }
+    this.addEventListener("trackplot:click", this._drillClickHandler)
+  }
+
+  _removeDrillListener() {
+    if (this._drillClickHandler) {
+      this.removeEventListener("trackplot:click", this._drillClickHandler)
+      this._drillClickHandler = null
+    }
+  }
+
+  _drillToLevel(n) {
+    while (this._drillStack.length > n) {
+      const prev = this._drillStack.pop()
+      this.chartConfig.data = prev.data
+    }
+    this._rebuildChart(true)
+    this._renderBreadcrumb()
+    this.dispatchEvent(new CustomEvent("trackplot:drillup", {
+      bubbles: true,
+      detail: { level: this._drillStack.length }
+    }))
+  }
+
+  _renderBreadcrumb() {
+    this._removeBreadcrumb()
+    if (this._drillStack.length === 0) return
+
+    const t = this.chartConfig.theme || DEFAULT_THEME
+    const crumbDiv = document.createElement("div")
+    crumbDiv.className = "trackplot-breadcrumb"
+    crumbDiv.style.cssText = `display:flex;align-items:center;gap:4px;padding:4px 8px;font-family:${t.font || FONT};font-size:13px;color:${t.text_color || "#374151"};`
+
+    // "All" link (root)
+    const allLink = document.createElement("span")
+    allLink.textContent = "All"
+    allLink.style.cssText = "cursor:pointer;text-decoration:underline;"
+    allLink.addEventListener("click", () => this._drillToLevel(0))
+    crumbDiv.appendChild(allLink)
+
+    // Intermediate levels
+    this._drillStack.forEach((entry, i) => {
+      const sep = document.createElement("span")
+      sep.textContent = " \u203A "
+      crumbDiv.appendChild(sep)
+
+      if (i < this._drillStack.length - 1) {
+        const link = document.createElement("span")
+        link.textContent = entry.label
+        link.style.cssText = "cursor:pointer;text-decoration:underline;"
+        const level = i + 1
+        link.addEventListener("click", () => this._drillToLevel(level))
+        crumbDiv.appendChild(link)
+      } else {
+        // Current level (bold, not clickable)
+        const current = document.createElement("span")
+        current.textContent = entry.label
+        current.style.fontWeight = "bold"
+        crumbDiv.appendChild(current)
+      }
+    })
+
+    this.insertBefore(crumbDiv, this.firstChild)
+  }
+
+  _removeBreadcrumb() {
+    const crumb = this.querySelector(".trackplot-breadcrumb")
+    if (crumb) crumb.remove()
   }
 }
 

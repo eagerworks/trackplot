@@ -602,6 +602,62 @@ class ChartBuilderTest < Minitest::Test
     refute config.key?(:parent_key)
   end
 
+  # ─── Drilldown Tests ──────────────────────────────────────────
+
+  def test_collects_drilldown_component
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    result = builder.drilldown(:breakdown)
+
+    assert_nil result
+    config = builder.components[0].to_config
+    assert_equal "drilldown", config[:type]
+    assert_equal "breakdown", config[:key]
+  end
+
+  def test_drilldown_key_converts_to_string
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.drilldown(:details)
+
+    config = builder.components[0].to_config
+    assert_equal "details", config[:key]
+  end
+
+  def test_drilldown_in_full_config
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.bar(:revenue)
+    builder.axis(:x, data_key: :month)
+    builder.drilldown(:breakdown)
+
+    config = builder.send(:build_config)
+    types = config[:components].map { |c| c[:type] }
+    assert_includes types, "bar"
+    assert_includes types, "axis"
+    assert_includes types, "drilldown"
+  end
+
+  def test_nested_data_survives_json_round_trip
+    data = [
+      {"region" => "North", "revenue" => 500, "breakdown" => [
+        {"region" => "NYC", "revenue" => 200},
+        {"region" => "Boston", "revenue" => 300}
+      ]},
+      {"region" => "South", "revenue" => 300, "breakdown" => [
+        {"region" => "Atlanta", "revenue" => 300}
+      ]}
+    ]
+
+    builder = Trackplot::ChartBuilder.new(data)
+    builder.bar(:revenue)
+    builder.drilldown(:breakdown)
+
+    config = builder.send(:build_config)
+    json = config.to_json
+    parsed = JSON.parse(json)
+
+    assert_equal 2, parsed["data"][0]["breakdown"].length
+    assert_equal "NYC", parsed["data"][0]["breakdown"][0]["region"]
+  end
+
   # ─── Config Round-trip Tests ────────────────────────────────
 
   def test_full_config_round_trip_cartesian

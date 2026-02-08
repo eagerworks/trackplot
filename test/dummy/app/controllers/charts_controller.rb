@@ -104,6 +104,98 @@ class ChartsController < ApplicationController
       {name: "Redis", category: "Database", size: 1800}
     ]
 
+    # Drill-down bar data (region → city → neighborhood)
+    @drilldown_bar_data = [
+      {region: "North", revenue: 8200, breakdown: [
+        {region: "NYC", revenue: 4500, breakdown: [
+          {region: "Manhattan", revenue: 2800},
+          {region: "Brooklyn", revenue: 1200},
+          {region: "Queens", revenue: 500}
+        ]},
+        {region: "Boston", revenue: 2200},
+        {region: "Chicago", revenue: 1500}
+      ]},
+      {region: "South", revenue: 5400, breakdown: [
+        {region: "Atlanta", revenue: 2100},
+        {region: "Miami", revenue: 1900},
+        {region: "Houston", revenue: 1400}
+      ]},
+      {region: "West", revenue: 7100, breakdown: [
+        {region: "LA", revenue: 3200},
+        {region: "SF", revenue: 2500},
+        {region: "Seattle", revenue: 1400}
+      ]},
+      {region: "East", revenue: 4300, breakdown: [
+        {region: "Philly", revenue: 1800},
+        {region: "DC", revenue: 1500},
+        {region: "Baltimore", revenue: 1000}
+      ]}
+    ]
+
+    # Drill-down pie data (device → browser)
+    @drilldown_pie_data = [
+      {segment: "Desktop", value: 42, breakdown: [
+        {segment: "Chrome", value: 22},
+        {segment: "Firefox", value: 10},
+        {segment: "Safari", value: 7},
+        {segment: "Edge", value: 3}
+      ]},
+      {segment: "Mobile", value: 35, breakdown: [
+        {segment: "Safari iOS", value: 18},
+        {segment: "Chrome Android", value: 14},
+        {segment: "Samsung", value: 3}
+      ]},
+      {segment: "Tablet", value: 13, breakdown: [
+        {segment: "iPad", value: 9},
+        {segment: "Android Tablet", value: 4}
+      ]},
+      {segment: "Other", value: 10}
+    ]
+
+    # Drill-down heatmap data (quarterly → monthly)
+    @drilldown_heatmap_data = %w[Q1 Q2 Q3 Q4].flat_map do |quarter|
+      %w[Sales Marketing Engineering Support].map do |dept|
+        months = case quarter
+                 when "Q1" then %w[Jan Feb Mar]
+                 when "Q2" then %w[Apr May Jun]
+                 when "Q3" then %w[Jul Aug Sep]
+                 when "Q4" then %w[Oct Nov Dec]
+                 end
+        {
+          day: quarter, hour: dept,
+          count: rand(50..200),
+          breakdown: months.map { |m| {day: m, hour: dept, count: rand(10..80)} }
+        }
+      end
+    end
+
+    # Drill-down treemap data (department → team → person)
+    @drilldown_treemap_data = [
+      {name: "Engineering", size: 9500, breakdown: [
+        {name: "Frontend", size: 3800, breakdown: [
+          {name: "Alice", size: 1500},
+          {name: "Bob", size: 1300},
+          {name: "Carol", size: 1000}
+        ]},
+        {name: "Backend", size: 3500, breakdown: [
+          {name: "Dave", size: 1800},
+          {name: "Eve", size: 1700}
+        ]},
+        {name: "DevOps", size: 2200}
+      ]},
+      {name: "Sales", size: 6200, breakdown: [
+        {name: "Enterprise", size: 3500},
+        {name: "SMB", size: 1800},
+        {name: "Partnerships", size: 900}
+      ]},
+      {name: "Marketing", size: 4100, breakdown: [
+        {name: "Content", size: 1800},
+        {name: "Paid", size: 1500},
+        {name: "Brand", size: 800}
+      ]},
+      {name: "Support", size: 2800}
+    ]
+
     # Dual Y-axis data
     @dual_axis_data = [
       {month: "Jan", revenue: 4000, orders: 120},

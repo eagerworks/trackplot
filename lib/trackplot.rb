@@ -28,6 +28,7 @@ module Trackplot
     autoload :Brush, "trackplot/components/brush"
     autoload :Heatmap, "trackplot/components/heatmap"
     autoload :Treemap, "trackplot/components/treemap"
+    autoload :Drilldown, "trackplot/components/drilldown"
   end
 
   # Optional integrations — loaded only when their dependencies are available

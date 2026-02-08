@@ -364,6 +364,54 @@
     </script>
   </div>
 
+  <%# ─── Drill-Down Bar Chart ──────────────────────────────── %>
+  <div class="card">
+    <h2>Drill-Down (Bar)</h2>
+    <p>Click a bar to drill into regional breakdown &mdash; 3 levels deep</p>
+    <%= trackplot_chart @drilldown_bar_data, height: "280px" do |c| %>
+      <% c.bar :revenue, color: "#6366f1" %>
+      <% c.axis :x, data_key: :region %>
+      <% c.axis :y, format: :currency %>
+      <% c.tooltip format: :currency %>
+      <% c.grid %>
+      <% c.drilldown :breakdown %>
+    <% end %>
+  </div>
+
+  <%# ─── Drill-Down Pie Chart ────────────────────────────── %>
+  <div class="card">
+    <h2>Drill-Down (Pie)</h2>
+    <p>Click a slice to see browser breakdown per device</p>
+    <%= trackplot_chart @drilldown_pie_data, height: "280px" do |c| %>
+      <% c.pie :value, label_key: :segment, donut: true %>
+      <% c.tooltip %>
+      <% c.legend %>
+      <% c.drilldown :breakdown %>
+    <% end %>
+  </div>
+
+  <%# ─── Drill-Down Heatmap ────────────────────────────────── %>
+  <div class="card">
+    <h2>Drill-Down (Heatmap)</h2>
+    <p>Click a cell to drill from quarterly totals into monthly breakdown</p>
+    <%= trackplot_chart @drilldown_heatmap_data, height: "280px" do |c| %>
+      <% c.heatmap x_key: :day, y_key: :hour, value_key: :count %>
+      <% c.tooltip %>
+      <% c.drilldown :breakdown %>
+    <% end %>
+  </div>
+
+  <%# ─── Drill-Down Treemap ────────────────────────────────── %>
+  <div class="card">
+    <h2>Drill-Down (Treemap)</h2>
+    <p>Click a rectangle to drill from departments into teams and people</p>
+    <%= trackplot_chart @drilldown_treemap_data, height: "280px" do |c| %>
+      <% c.treemap value_key: :size, label_key: :name %>
+      <% c.tooltip %>
+      <% c.drilldown :breakdown %>
+    <% end %>
+  </div>
+
   <%# ─── Real-time Append Demo ───────────────────────────── %>
   <div class="card">
     <h2>Real-time Append</h2>

@@ -439,6 +439,72 @@ Charts gracefully handle empty data with a centered message:
 
 The default message is "No data available". Customize it with `empty_message:`.
 
+## Drill-Down
+
+Click a bar, pie slice, heatmap cell, or treemap rectangle to zoom into nested sub-data. All drill levels are pre-loaded in the JSON config — no server round-trips required. A breadcrumb appears for navigation back.
+
+```erb
+<%= trackplot_chart @data do |c| %>
+  <% c.bar :revenue %>
+  <% c.axis :x, data_key: :region %>
+  <% c.axis :y, format: :currency %>
+  <% c.drilldown :breakdown %>
+<% end %>
+```
+
+Nest sub-data under the drill key. Multi-level drilling is supported:
+
+```ruby
+@data = [
+  { region: "North", revenue: 500, breakdown: [
+    { region: "NYC", revenue: 200, breakdown: [
+      { region: "Manhattan", revenue: 120 },
+      { region: "Brooklyn", revenue: 80 }
+    ]},
+    { region: "Boston", revenue: 300 }
+  ]},
+  { region: "South", revenue: 300, breakdown: [
+    { region: "Atlanta", revenue: 300 }
+  ]}
+]
+```
+
+Works with pie/donut charts too:
+
+```erb
+<% c.pie :value, label_key: :name %>
+<% c.drilldown :breakdown %>
+```
+
+Items without the drill key (leaf nodes) fire a normal `trackplot:click` event instead.
+
+### Drill-Down JavaScript API
+
+Navigate drill levels programmatically:
+
+```javascript
+const chart = document.querySelector("trackplot-chart")
+
+chart.drillUp()    // Go back one level (returns false if at root)
+chart.drillReset() // Return to root from any depth (returns false if at root)
+```
+
+### Drill-Down Events
+
+```javascript
+// Fires after drilling into sub-data
+chart.addEventListener("trackplot:drilldown", (e) => {
+  e.detail.level  // current drill depth (1, 2, ...)
+  e.detail.datum  // the clicked datum
+  e.detail.label  // label of the drilled item ("North", "NYC", ...)
+})
+
+// Fires after drilling back up
+chart.addEventListener("trackplot:drillup", (e) => {
+  e.detail.level  // new drill depth (0 = root)
+})
+```
+
 ## Click Events
 
 Every interactive element (bars, dots, pie slices, funnel stages...) dispatches a `trackplot:click` CustomEvent that bubbles up the DOM:

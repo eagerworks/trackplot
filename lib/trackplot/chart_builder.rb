@@ -101,6 +101,11 @@ module Trackplot
       nil
     end
 
+    def drilldown(key, **opts)
+      @components << Components::Drilldown.new(key: key, **opts)
+      nil
+    end
+
     def render(view_context)
       chart_id = options[:id] || "trackplot-#{SecureRandom.hex(8)}"
       config = build_config
