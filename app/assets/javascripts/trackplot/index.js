@@ -1457,8 +1457,14 @@ class TrackplotElement extends HTMLElement {
       return
     }
 
+    // Clear stale content from Turbo cache restoration or Turbo Stream replace
+    this.innerHTML = ""
+
     this.chart = new Chart(this, this.chartConfig)
-    requestAnimationFrame(() => this.chart.render())
+    requestAnimationFrame(() => {
+      this.chart.render()
+      this._dispatchRender()
+    })
 
     this._resizeTimeout = null
     this.resizeObserver = new ResizeObserver(() => {
@@ -1471,11 +1477,16 @@ class TrackplotElement extends HTMLElement {
       }, 150)
     })
     this.resizeObserver.observe(this)
+
+    // Clear before Turbo caches the page so snapshots don't contain stale SVG
+    this._turboCacheHandler = () => this.chart?.clear()
+    document.addEventListener("turbo:before-cache", this._turboCacheHandler)
   }
 
   disconnectedCallback() {
     clearTimeout(this._resizeTimeout)
     this.resizeObserver?.disconnect()
+    document.removeEventListener("turbo:before-cache", this._turboCacheHandler)
     this.chart?.destroy()
     this.chart = null
   }
@@ -1487,11 +1498,43 @@ class TrackplotElement extends HTMLElement {
       try {
         this.chartConfig = JSON.parse(newVal)
         this.chart = new Chart(this, this.chartConfig)
+        this.chart.animate = false
         this.chart.render()
+        this._dispatchRender()
       } catch (e) {
         console.error("Trackplot: invalid config JSON", e)
       }
     }
+  }
+
+  // ── Public API ──────────────────────────────────────────
+
+  /** Replace chart data and re-render without animation. */
+  updateData(newData) {
+    if (!this.chartConfig) return
+    this.chartConfig.data = newData
+    this._rebuildChart(false)
+  }
+
+  /** Replace the full config object and re-render. */
+  updateConfig(config) {
+    this.chartConfig = config
+    this._rebuildChart(false)
+  }
+
+  // ── Internals ───────────────────────────────────────────
+
+  _rebuildChart(animate) {
+    this.chart = new Chart(this, this.chartConfig)
+    this.chart.animate = animate
+    this.chart.render()
+    // Sync attribute so Turbo morphing sees current state
+    this.setAttribute("config", JSON.stringify(this.chartConfig))
+    this._dispatchRender()
+  }
+
+  _dispatchRender() {
+    this.dispatchEvent(new CustomEvent("trackplot:render", { bubbles: true }))
   }
 }
 

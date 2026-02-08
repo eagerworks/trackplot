@@ -238,4 +238,21 @@
     </script>
   </div>
 
+  <%# ─── Turbo Stream–friendly Chart ─────────────────────── %>
+  <div class="card">
+    <h2>Turbo-Ready Chart</h2>
+    <p>Stable ID for <code>turbo_stream.replace</code> &mdash; try <code>updateData()</code> in console</p>
+    <%= trackplot_chart @sales_data, id: "revenue-live", height: "280px" do |c| %>
+      <% c.line :revenue, color: "#6366f1", curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y, format: :currency %>
+      <% c.tooltip format: :currency %>
+      <% c.grid %>
+    <% end %>
+    <script>
+      // Example: programmatic data update (e.g., from a Stimulus controller)
+      // document.getElementById("revenue-live").updateData(newDataArray)
+    </script>
+  </div>
+
 </div>

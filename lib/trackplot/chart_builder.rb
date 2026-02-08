@@ -82,7 +82,7 @@ module Trackplot
     end
 
     def render(view_context)
-      chart_id = "trackplot-#{SecureRandom.hex(8)}"
+      chart_id = options[:id] || "trackplot-#{SecureRandom.hex(8)}"
       config = build_config
 
       view_context.content_tag(

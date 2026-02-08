@@ -320,4 +320,16 @@ class ChartBuilderTest < Minitest::Test
     config = builder.components[0].to_config
     assert_equal ",.0f", config[:format]
   end
+
+  # ─── Stable ID for Turbo ──────────────────────────────────
+
+  def test_custom_id_option
+    builder = Trackplot::ChartBuilder.new(sample_data, id: "revenue-chart")
+    assert_equal "revenue-chart", builder.options[:id]
+  end
+
+  def test_default_id_not_in_options
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    assert_nil builder.options[:id]
+  end
 end
