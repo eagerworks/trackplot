@@ -1,6 +1,6 @@
 module Trackplot
   module Components
-    class Area < Base
+    class HorizontalBar < Base
       attr_reader :data_key
 
       def initialize(data_key, **options)
@@ -10,13 +10,11 @@ module Trackplot
 
       def to_config
         {
-          type: "area",
+          type: "horizontal_bar",
           data_key: data_key,
           color: options[:color],
-          curve: options.fetch(:curve, false),
-          opacity: options[:opacity] || 0.3,
-          stroke_width: options[:stroke_width] || 2,
-          stack: options[:stack]
+          opacity: options[:opacity],
+          radius: options[:radius] || 4
         }.compact
       end
     end

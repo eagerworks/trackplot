@@ -111,4 +111,70 @@ class ChartBuilderTest < Minitest::Test
     assert_equal true, config[:dot]
     assert_equal 4, config[:dot_size]
   end
+
+  def test_collects_scatter_component
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    result = builder.scatter(:profit, x_key: :revenue, color: "#ef4444")
+
+    assert_nil result
+    config = builder.components[0].to_config
+    assert_equal "scatter", config[:type]
+    assert_equal :profit, config[:data_key]
+    assert_equal :revenue, config[:x_key]
+    assert_equal 5, config[:dot_size]
+  end
+
+  def test_collects_radar_component
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.radar(:revenue, color: "#8b5cf6")
+
+    config = builder.components[0].to_config
+    assert_equal "radar", config[:type]
+    assert_equal :revenue, config[:data_key]
+    assert_equal 0.15, config[:opacity]
+  end
+
+  def test_collects_horizontal_bar_component
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.horizontal_bar(:revenue, color: "#06b6d4")
+
+    config = builder.components[0].to_config
+    assert_equal "horizontal_bar", config[:type]
+    assert_equal :revenue, config[:data_key]
+    assert_equal 4, config[:radius]
+  end
+
+  def test_collects_candlestick_component
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.candlestick(open: :open, high: :high, low: :low, close: :close)
+
+    config = builder.components[0].to_config
+    assert_equal "candlestick", config[:type]
+    assert_equal :open, config[:open]
+    assert_equal :high, config[:high]
+    assert_equal :low, config[:low]
+    assert_equal :close, config[:close]
+    assert_equal "#10b981", config[:up_color]
+    assert_equal "#ef4444", config[:down_color]
+  end
+
+  def test_collects_funnel_component
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.funnel(:revenue, label_key: :month)
+
+    config = builder.components[0].to_config
+    assert_equal "funnel", config[:type]
+    assert_equal :revenue, config[:data_key]
+    assert_equal :month, config[:label_key]
+  end
+
+  def test_area_with_stack_option
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.area(:revenue, stack: "main", color: "#6366f1")
+    builder.area(:profit, stack: "main", color: "#10b981")
+
+    assert_equal 2, builder.components.length
+    assert_equal "main", builder.components[0].to_config[:stack]
+    assert_equal "main", builder.components[1].to_config[:stack]
+  end
 end

@@ -51,6 +51,31 @@ module Trackplot
       nil
     end
 
+    def scatter(data_key, **opts)
+      @components << Components::Scatter.new(data_key, **opts)
+      nil
+    end
+
+    def radar(data_key, **opts)
+      @components << Components::Radar.new(data_key, **opts)
+      nil
+    end
+
+    def horizontal_bar(data_key, **opts)
+      @components << Components::HorizontalBar.new(data_key, **opts)
+      nil
+    end
+
+    def candlestick(**opts)
+      @components << Components::Candlestick.new(**opts)
+      nil
+    end
+
+    def funnel(data_key, **opts)
+      @components << Components::Funnel.new(data_key, **opts)
+      nil
+    end
+
     def render(view_context)
       chart_id = "trackplot-#{SecureRandom.hex(8)}"
       config = build_config
