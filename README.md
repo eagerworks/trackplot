@@ -21,14 +21,16 @@ That's it. No JavaScript files to write, no chart config objects to manage, no b
 
 ---
 
-## 10 Chart Types
+## Chart Types
 
-| Cartesian | Radial | Other |
-|-----------|--------|-------|
-| Line | Pie / Donut | Horizontal Bar |
-| Bar | Radar | Funnel |
-| Area (+ stacked) | | Candlestick (OHLC) |
-| Scatter | | |
+| Cartesian | Radial | Hierarchical | Other |
+|-----------|--------|--------------|-------|
+| Line | Pie / Donut | Treemap | Horizontal Bar |
+| Bar (grouped + stacked) | Radar | | Funnel |
+| Area (+ stacked) | | | Candlestick (OHLC) |
+| Scatter | | | Heatmap |
+
+Plus **sparklines** for inline mini-charts in tables and dashboards.
 
 Mix and match freely — bars + lines on the same chart just work.
 
@@ -90,7 +92,7 @@ Your data can use symbol or string keys — Trackplot normalizes both:
 <% c.line :revenue, color: "#6366f1", curve: true, dashed: true %>
 ```
 
-Options: `color`, `curve` (smooth), `dashed`, `stroke_width`, `dot` (true/false), `dot_size`.
+Options: `color`, `curve` (smooth), `dashed`, `stroke_width`, `dot` (true/false), `dot_size`, `y_axis`.
 
 ### Bar
 
@@ -98,7 +100,14 @@ Options: `color`, `curve` (smooth), `dashed`, `stroke_width`, `dot` (true/false)
 <% c.bar :sales, color: "#06b6d4", opacity: 0.8, radius: 6 %>
 ```
 
-Multiple bar series render as grouped bars automatically. Options: `color`, `opacity`, `radius` (corner rounding), `stack` (group name for stacking).
+Multiple bar series render as grouped bars automatically. Options: `color`, `opacity`, `radius` (corner rounding), `stack` (group name for stacking), `y_axis`.
+
+Stack bars by giving them the same `stack` name:
+
+```erb
+<% c.bar :revenue, stack: "main", color: "#6366f1" %>
+<% c.bar :costs,   stack: "main", color: "#f59e0b" %>
+```
 
 ### Area
 
@@ -119,7 +128,7 @@ Renders a gradient fill with a stroke line. Stack multiple areas by giving them 
 <% c.scatter :weight, color: "#ec4899", dot_size: 6 %>
 ```
 
-Options: `color`, `dot_size`, `opacity`, `x_key` (override x-axis key).
+Options: `color`, `dot_size`, `opacity`, `x_key` (override x-axis key), `y_axis`.
 
 ### Pie / Donut
 
@@ -163,6 +172,33 @@ Options: `up_color`, `down_color`.
 
 Options: `label_key`.
 
+### Heatmap
+
+Visualize density or intensity across two dimensions:
+
+```erb
+<%= trackplot_chart @activity_data, height: "300px" do |c| %>
+  <% c.heatmap x_key: :day, y_key: :hour, value_key: :count,
+               color_range: ["#f0f9ff", "#1e40af"] %>
+  <% c.tooltip %>
+<% end %>
+```
+
+Options: `x_key`, `y_key`, `value_key`, `color_range` (two-color array), `radius`.
+
+### Treemap
+
+Show hierarchical data as nested rectangles:
+
+```erb
+<%= trackplot_chart @budget_data, height: "300px" do |c| %>
+  <% c.treemap value_key: :amount, label_key: :name, parent_key: :department %>
+  <% c.tooltip %>
+<% end %>
+```
+
+Options: `value_key`, `label_key`, `parent_key` (optional — groups data into a hierarchy). Without `parent_key`, data is treated as flat.
+
 ### Combined Charts
 
 Layer different series types on the same chart:
@@ -179,6 +215,32 @@ Layer different series types on the same chart:
 <% end %>
 ```
 
+## Sparklines
+
+Inline mini-charts for tables and dashboards — no axes, no labels, just the shape:
+
+```erb
+<%= trackplot_sparkline @trend_data, key: :revenue, type: :line, color: "#6366f1" %>
+```
+
+Types: `:line` (default, with last-dot indicator), `:bar`, `:area`.
+
+Options: `key:` (required), `type:`, `color:`, `width:` (default `"120px"`), `height:` (default `"32px"`), `stroke_width:`, `dot:`.
+
+Use them in tables:
+
+```erb
+<table>
+  <% @metrics.each do |metric| %>
+    <tr>
+      <td><%= metric.name %></td>
+      <td><%= trackplot_sparkline metric.history, key: :value, color: "#10b981" %></td>
+      <td><%= metric.current_value %></td>
+    </tr>
+  <% end %>
+</table>
+```
+
 ## Components
 
 ### Axis
@@ -188,7 +250,23 @@ Layer different series types on the same chart:
 <% c.axis :y, label: "Revenue ($)", format: :currency, tick_count: 5 %>
 ```
 
-Options: `data_key`, `label`, `format`, `tick_count`, `tick_rotation`.
+Options: `data_key`, `label`, `format`, `tick_count`, `tick_rotation`, `axis_id`.
+
+### Dual Y-Axis
+
+Compare series with different scales on the same chart:
+
+```erb
+<%= trackplot_chart @data do |c| %>
+  <% c.bar  :revenue, color: "#6366f1" %>
+  <% c.line :conversion_rate, color: "#ef4444", y_axis: :right %>
+  <% c.axis :x, data_key: :month %>
+  <% c.axis :y, format: :currency %>
+  <% c.axis :y, axis_id: :right, format: :percent %>
+<% end %>
+```
+
+Add `axis_id: :right` to a y-axis, then bind series to it with `y_axis: :right`. Works on line, bar, area, and scatter.
 
 ### Tooltip
 
@@ -224,6 +302,28 @@ Draw horizontal or vertical lines for targets, thresholds, or annotations:
 ```
 
 Options: `y` or `x` (value), `label`, `color`, `dashed` (default true), `stroke_width`.
+
+### Data Labels
+
+Show formatted values directly on bars, dots, and pie slices:
+
+```erb
+<% c.data_label format: :currency, position: :top %>
+```
+
+Options: `format` (any format preset or D3 format string), `position` (`:top`, `:center`, `:outside`), `font_size` (default 11).
+
+### Brush
+
+Interactive range selection for exploring large datasets:
+
+```erb
+<% c.brush axis: :x %>
+```
+
+Renders a mini preview below the chart. Drag to select a range — the chart zooms in. Double-click to reset.
+
+Options: `axis` (default `:x`), `height` (default 40).
 
 ## Number Formatting
 
@@ -261,6 +361,38 @@ Custom theme (merges with defaults):
 
 Theme properties: `colors`, `background`, `text_color`, `axis_color`, `grid_color`, `tooltip_bg`, `tooltip_text`, `tooltip_border`, `font`.
 
+## Accessibility
+
+Charts support ARIA attributes for screen readers:
+
+```erb
+<%= trackplot_chart @data, title: "Monthly Revenue", description: "Revenue trend from Jan to Jul" do |c| %>
+  <% c.line :revenue %>
+  <% c.axis :x, data_key: :month %>
+  <% c.axis :y %>
+<% end %>
+```
+
+When `title:` is set:
+- The `<trackplot-chart>` element gets `role="img"` and `aria-label`
+- The SVG includes `<title>` and `<desc>` elements
+- Decorative elements (grid lines, crosshair) are marked `aria-hidden="true"`
+- Data points get `aria-label` attributes with their values
+
+## Empty State
+
+Charts gracefully handle empty data with a centered message:
+
+```erb
+<%= trackplot_chart [], empty_message: "No sales data for this period" do |c| %>
+  <% c.line :revenue %>
+  <% c.axis :x, data_key: :month %>
+  <% c.axis :y %>
+<% end %>
+```
+
+The default message is "No data available". Customize it with `empty_message:`.
+
 ## Click Events
 
 Every interactive element (bars, dots, pie slices, funnel stages...) dispatches a `trackplot:click` CustomEvent that bubbles up the DOM:
@@ -281,6 +413,24 @@ Works great with Stimulus:
   <% end %>
 </div>
 ```
+
+## Export to PNG / SVG
+
+Download charts as images from JavaScript:
+
+```javascript
+const chart = document.querySelector("trackplot-chart")
+
+// PNG (default 2x resolution)
+chart.exportPNG()
+chart.exportPNG(3, "revenue.png")  // custom scale and filename
+
+// SVG
+chart.exportSVG()
+chart.exportSVG("revenue.svg")
+```
+
+Both methods return a Promise that resolves with the Blob.
 
 ## Turbo Support
 
@@ -319,6 +469,20 @@ const chart = document.getElementById("revenue-chart")
 chart.updateData(newDataArray)
 ```
 
+### Real-time Data Append
+
+Push new data points without a full re-render — great for live dashboards:
+
+```javascript
+const chart = document.getElementById("live-chart")
+chart.appendData(
+  [{ time: "12:05", value: 42 }],
+  { maxPoints: 50 }  // sliding window
+)
+```
+
+Dispatches a `trackplot:data-update` event after each append.
+
 The `trackplot:render` event fires after every render:
 
 ```javascript
@@ -326,6 +490,35 @@ document.addEventListener("trackplot:render", function(e) {
   console.log("Chart ready:", e.target.id)
 })
 ```
+
+## ViewComponent / Phlex Support
+
+If you use [ViewComponent](https://viewcomponent.org/) or [Phlex](https://www.phlex.fun/), Trackplot provides optional integrations.
+
+### ViewComponent
+
+```ruby
+# In your view
+render Trackplot::Component.new(data: @data, height: "300px") { |c|
+  c.line :revenue, color: "#6366f1"
+  c.axis :x, data_key: :month
+  c.axis :y
+}
+```
+
+Requires `view_component` in your Gemfile. Trackplot loads the component class only when ViewComponent is available.
+
+### Phlex
+
+```ruby
+render Trackplot::PhlexComponent.new(data: @data, height: "300px") { |c|
+  c.line :revenue, color: "#6366f1"
+  c.axis :x, data_key: :month
+  c.axis :y
+}
+```
+
+Requires `phlex` in your Gemfile.
 
 ## Chart Options
 
@@ -339,6 +532,9 @@ Pass options directly to `trackplot_chart`:
 | `animate:` | `true` | Entry animations |
 | `theme:` | `:default` | Theme preset or custom Hash |
 | `class:` | `nil` | Additional CSS classes |
+| `title:` | `nil` | Accessibility label (adds ARIA attributes) |
+| `description:` | `nil` | Accessibility description (requires `title:`) |
+| `empty_message:` | `"No data available"` | Message shown when data is empty |
 
 ## Development
 
@@ -353,6 +549,8 @@ Boot the demo app:
 ```bash
 cd test/dummy && bin/rails server
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
 
 ## License
 
