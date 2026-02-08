@@ -4,6 +4,7 @@ require_relative "trackplot/engine" if defined?(Rails::Engine)
 module Trackplot
   autoload :ChartBuilder, "trackplot/chart_builder"
   autoload :DataAdapter, "trackplot/data_adapter"
+  autoload :Theme, "trackplot/theme"
 
   module Components
     autoload :Base, "trackplot/components/base"
@@ -20,5 +21,6 @@ module Trackplot
     autoload :HorizontalBar, "trackplot/components/horizontal_bar"
     autoload :Candlestick, "trackplot/components/candlestick"
     autoload :Funnel, "trackplot/components/funnel"
+    autoload :ReferenceLine, "trackplot/components/reference_line"
   end
 end

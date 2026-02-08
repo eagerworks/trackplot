@@ -15,6 +15,45 @@ const DEFAULT_MARGIN = { top: 24, right: 24, bottom: 44, left: 52 }
 const ALL_SERIES_TYPES = ["line", "bar", "area", "pie", "scatter", "radar", "horizontal_bar", "candlestick", "funnel"]
 const CARTESIAN_TYPES = ["line", "bar", "area", "scatter", "candlestick"]
 
+// ─── Default Theme ──────────────────────────────────────────────────────────
+
+const DEFAULT_THEME = {
+  colors: COLORS,
+  background: "transparent",
+  text_color: "#374151",
+  axis_color: "#d1d5db",
+  grid_color: "#e5e7eb",
+  tooltip_bg: "rgba(255, 255, 255, 0.96)",
+  tooltip_text: "#111827",
+  tooltip_border: "#e5e7eb",
+  font: FONT
+}
+
+// ─── Format Presets ─────────────────────────────────────────────────────────
+
+const FORMAT_PRESETS = {
+  currency: v => "$" + d3.format(",.0f")(v),
+  percent: v => d3.format(",.0f")(v) + "%",
+  compact: d3.format("~s"),
+  decimal: d3.format(",.2f"),
+  integer: d3.format(",.0f")
+}
+
+function resolveFormatter(fmt) {
+  if (!fmt) return v => v
+  if (FORMAT_PRESETS[fmt]) return FORMAT_PRESETS[fmt]
+  try { return d3.format(fmt) } catch { return v => v }
+}
+
+// ─── Click Event Helper ─────────────────────────────────────────────────────
+
+function dispatchClick(element, detail) {
+  element.dispatchEvent(new CustomEvent("trackplot:click", {
+    bubbles: true,
+    detail: detail
+  }))
+}
+
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
 function sanitizeClass(str) {
@@ -102,19 +141,20 @@ function findNearestIndex(mouseX, data, getX) {
   return nearest
 }
 
-function createTooltipDiv(container) {
+function createTooltipDiv(container, theme) {
+  const t = theme || DEFAULT_THEME
   const el = document.createElement("div")
   Object.assign(el.style, {
     position: "absolute",
     pointerEvents: "none",
-    background: "rgba(255, 255, 255, 0.96)",
+    background: t.tooltip_bg,
     backdropFilter: "blur(8px)",
     WebkitBackdropFilter: "blur(8px)",
-    border: "1px solid #e5e7eb",
+    border: `1px solid ${t.tooltip_border}`,
     borderRadius: "8px",
     padding: "10px 14px",
     fontSize: "13px",
-    fontFamily: FONT,
+    fontFamily: t.font || FONT,
     boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
     opacity: "0",
     transition: "opacity 0.15s ease",
@@ -129,13 +169,14 @@ function createTooltipDiv(container) {
 
 // ─── Grid Renderer ───────────────────────────────────────────────────────────
 
-function renderGrid(g, config, xScale, yScale, width, height) {
+function renderGrid(g, config, xScale, yScale, width, height, theme) {
+  const t = theme || DEFAULT_THEME
   const grid = g.append("g").attr("class", "trackplot-grid")
 
   if (config.horizontal !== false) {
     grid.append("g")
       .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(""))
-      .call(g => g.selectAll("line").attr("stroke", "#e5e7eb").attr("stroke-dasharray", "3 3"))
+      .call(g => g.selectAll("line").attr("stroke", t.grid_color).attr("stroke-dasharray", "3 3"))
       .call(g => g.selectAll(".domain").remove())
       .call(g => g.selectAll(".tick text").remove())
   }
@@ -144,7 +185,7 @@ function renderGrid(g, config, xScale, yScale, width, height) {
     grid.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(""))
-      .call(g => g.selectAll("line").attr("stroke", "#e5e7eb").attr("stroke-dasharray", "3 3"))
+      .call(g => g.selectAll("line").attr("stroke", t.grid_color).attr("stroke-dasharray", "3 3"))
       .call(g => g.selectAll(".domain").remove())
       .call(g => g.selectAll(".tick text").remove())
   }
@@ -152,7 +193,12 @@ function renderGrid(g, config, xScale, yScale, width, height) {
 
 // ─── Axes Renderer ───────────────────────────────────────────────────────────
 
-function renderAxes(g, axesConfigs, xScale, yScale, width, height) {
+function renderAxes(g, axesConfigs, xScale, yScale, width, height, theme) {
+  const t = theme || DEFAULT_THEME
+  const textColor = t.text_color
+  const axisStroke = t.axis_color
+  const font = t.font || FONT
+
   axesConfigs.forEach(axis => {
     if (axis.direction === "x") {
       const xG = g.append("g")
@@ -160,20 +206,21 @@ function renderAxes(g, axesConfigs, xScale, yScale, width, height) {
         .attr("transform", `translate(0,${height})`)
 
       let gen = d3.axisBottom(xScale)
-      if (axis.format) gen = gen.tickFormat(d3.format(axis.format))
+      const fmt = resolveFormatter(axis.format)
+      if (axis.format) gen = gen.tickFormat(fmt)
       if (axis.tick_count) gen = gen.ticks(axis.tick_count)
 
       xG.call(gen)
-      xG.selectAll("text").attr("fill", "#6b7280").attr("font-size", "12px").attr("font-family", FONT)
+      xG.selectAll("text").attr("fill", textColor).attr("font-size", "12px").attr("font-family", font)
       if (axis.tick_rotation) {
         xG.selectAll("text").attr("transform", `rotate(${axis.tick_rotation})`).attr("text-anchor", "end")
       }
-      xG.selectAll("line").attr("stroke", "#d1d5db")
-      xG.select(".domain").attr("stroke", "#d1d5db")
+      xG.selectAll("line").attr("stroke", axisStroke)
+      xG.select(".domain").attr("stroke", axisStroke)
 
       if (axis.label) {
         xG.append("text").attr("x", width / 2).attr("y", 36)
-          .attr("fill", "#374151").attr("font-size", "13px").attr("font-family", FONT)
+          .attr("fill", textColor).attr("font-size", "13px").attr("font-family", font)
           .attr("text-anchor", "middle").text(axis.label)
       }
     }
@@ -181,19 +228,88 @@ function renderAxes(g, axesConfigs, xScale, yScale, width, height) {
     if (axis.direction === "y") {
       const yG = g.append("g").attr("class", "trackplot-axis-y")
       let gen = d3.axisLeft(yScale)
-      if (axis.format) gen = gen.tickFormat(d3.format(axis.format))
+      const fmt = resolveFormatter(axis.format)
+      if (axis.format) gen = gen.tickFormat(fmt)
       if (axis.tick_count) gen = gen.ticks(axis.tick_count)
 
       yG.call(gen)
-      yG.selectAll("text").attr("fill", "#6b7280").attr("font-size", "12px").attr("font-family", FONT)
-      yG.selectAll("line").attr("stroke", "#d1d5db")
-      yG.select(".domain").attr("stroke", "#d1d5db")
+      yG.selectAll("text").attr("fill", textColor).attr("font-size", "12px").attr("font-family", font)
+      yG.selectAll("line").attr("stroke", axisStroke)
+      yG.select(".domain").attr("stroke", axisStroke)
 
       if (axis.label) {
         yG.append("text").attr("transform", "rotate(-90)")
           .attr("x", -height / 2).attr("y", -40)
-          .attr("fill", "#374151").attr("font-size", "13px").attr("font-family", FONT)
+          .attr("fill", textColor).attr("font-size", "13px").attr("font-family", font)
           .attr("text-anchor", "middle").text(axis.label)
+      }
+    }
+  })
+}
+
+// ─── Reference Lines Renderer ───────────────────────────────────────────────
+
+function renderReferenceLines(g, refs, xScale, yScale, width, height, theme) {
+  if (!refs || refs.length === 0) return
+  const t = theme || DEFAULT_THEME
+
+  refs.forEach(ref => {
+    const color = ref.color || "#ef4444"
+    const strokeWidth = ref.stroke_width || 1.5
+    const dashed = ref.dashed !== false
+
+    if (ref.direction === "y") {
+      const y = yScale(ref.value)
+      if (y == null || isNaN(y)) return
+
+      g.append("line")
+        .attr("class", "trackplot-reference-line")
+        .attr("x1", 0).attr("x2", width)
+        .attr("y1", y).attr("y2", y)
+        .attr("stroke", color)
+        .attr("stroke-width", strokeWidth)
+        .attr("stroke-dasharray", dashed ? "6 4" : null)
+
+      if (ref.label) {
+        g.append("text")
+          .attr("class", "trackplot-reference-label")
+          .attr("x", width - 4).attr("y", y - 6)
+          .attr("text-anchor", "end")
+          .attr("fill", color)
+          .attr("font-size", "11px")
+          .attr("font-family", t.font || FONT)
+          .attr("font-weight", "500")
+          .text(ref.label)
+      }
+    }
+
+    if (ref.direction === "x") {
+      let x
+      if (xScale.bandwidth) {
+        x = xScale(ref.value) + xScale.bandwidth() / 2
+      } else {
+        x = xScale(ref.value)
+      }
+      if (x == null || isNaN(x)) return
+
+      g.append("line")
+        .attr("class", "trackplot-reference-line")
+        .attr("x1", x).attr("x2", x)
+        .attr("y1", 0).attr("y2", height)
+        .attr("stroke", color)
+        .attr("stroke-width", strokeWidth)
+        .attr("stroke-dasharray", dashed ? "6 4" : null)
+
+      if (ref.label) {
+        g.append("text")
+          .attr("class", "trackplot-reference-label")
+          .attr("x", x + 6).attr("y", 12)
+          .attr("text-anchor", "start")
+          .attr("fill", color)
+          .attr("font-size", "11px")
+          .attr("font-family", t.font || FONT)
+          .attr("font-weight", "500")
+          .text(ref.label)
       }
     }
   })
@@ -201,7 +317,7 @@ function renderAxes(g, axesConfigs, xScale, yScale, width, height) {
 
 // ─── Line Renderer ───────────────────────────────────────────────────────────
 
-function renderLine(g, data, xScale, yScale, xKey, series, animate) {
+function renderLine(g, data, xScale, yScale, xKey, series, animate, chartElement) {
   const getX = xAccessorFor(xScale, xKey)
   const cls = sanitizeClass(series.data_key)
 
@@ -247,18 +363,32 @@ function renderLine(g, data, xScale, yScale, xKey, series, animate) {
       .attr("fill", "white")
       .attr("stroke", series.color)
       .attr("stroke-width", 2)
+      .style("cursor", "pointer")
 
     if (animate) {
       dots.attr("r", 0).transition().delay(DURATION).duration(300).attr("r", dotR)
     } else {
       dots.attr("r", dotR)
     }
+
+    if (chartElement) {
+      dots.on("click", function (event, d) {
+        const i = data.indexOf(d)
+        dispatchClick(chartElement, {
+          chartType: "line",
+          dataKey: series.data_key,
+          datum: d,
+          index: i,
+          value: d[series.data_key]
+        })
+      })
+    }
   }
 }
 
 // ─── Bar Renderer ────────────────────────────────────────────────────────────
 
-function renderBars(g, data, xScale, yScale, xKey, barSeries, animate) {
+function renderBars(g, data, xScale, yScale, xKey, barSeries, animate, chartElement) {
   if (barSeries.length === 0) return
 
   const bandwidth = xScale.bandwidth()
@@ -271,7 +401,7 @@ function renderBars(g, data, xScale, yScale, xKey, barSeries, animate) {
     const cls = sanitizeClass(series.data_key)
     const radius = Math.min(series.radius ?? 4, subScale.bandwidth() / 2)
 
-    g.selectAll(null)
+    const rects = g.selectAll(null)
       .data(data)
       .enter().append("rect")
       .attr("class", `trackplot-bar trackplot-bar-${cls}`)
@@ -286,16 +416,31 @@ function renderBars(g, data, xScale, yScale, xKey, barSeries, animate) {
       .attr("opacity", series.opacity ?? 1)
       .attr("y", animate ? yScale(0) : d => yScale(+d[series.data_key] || 0))
       .attr("height", animate ? 0 : d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
+      .style("cursor", "pointer")
       .transition().duration(animate ? DURATION : 0).ease(EASE)
       .delay((_, i) => animate ? i * 40 : 0)
       .attr("y", d => yScale(+d[series.data_key] || 0))
       .attr("height", d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
+
+    if (chartElement) {
+      g.selectAll(`.trackplot-bar-${cls}`)
+        .on("click", function (event, d) {
+          const i = data.indexOf(d)
+          dispatchClick(chartElement, {
+            chartType: "bar",
+            dataKey: series.data_key,
+            datum: d,
+            index: i,
+            value: d[series.data_key]
+          })
+        })
+    }
   })
 }
 
 // ─── Area Renderer ───────────────────────────────────────────────────────────
 
-function renderArea(g, data, xScale, yScale, xKey, series, animate) {
+function renderArea(g, data, xScale, yScale, xKey, series, animate, chartElement) {
   const getX = xAccessorFor(xScale, xKey)
   const cls = sanitizeClass(series.data_key)
   const gradientId = `trackplot-grad-${cls}-${Math.random().toString(36).slice(2, 9)}`
@@ -384,7 +529,7 @@ function renderStackedAreas(g, data, xScale, yScale, xKey, stackedAreas, animate
 
 // ─── Scatter Renderer ────────────────────────────────────────────────────────
 
-function renderScatter(g, data, xScale, yScale, xKey, series, animate) {
+function renderScatter(g, data, xScale, yScale, xKey, series, animate, chartElement) {
   const xDataKey = series.x_key || xKey
   const cls = sanitizeClass(series.data_key)
   const dotR = series.dot_size || 5
@@ -413,7 +558,6 @@ function renderScatter(g, data, xScale, yScale, xKey, series, animate) {
     dots.attr("r", dotR)
   }
 
-  // Hover effect
   dots
     .on("mouseenter", function () {
       d3.select(this).transition().duration(150).attr("r", dotR * 1.4).attr("fill-opacity", 1)
@@ -421,11 +565,24 @@ function renderScatter(g, data, xScale, yScale, xKey, series, animate) {
     .on("mouseleave", function () {
       d3.select(this).transition().duration(150).attr("r", dotR).attr("fill-opacity", series.opacity || 0.7)
     })
+
+  if (chartElement) {
+    dots.on("click", function (event, d) {
+      const i = data.indexOf(d)
+      dispatchClick(chartElement, {
+        chartType: "scatter",
+        dataKey: series.data_key,
+        datum: d,
+        index: i,
+        value: d[series.data_key]
+      })
+    })
+  }
 }
 
 // ─── Horizontal Bar Renderer ─────────────────────────────────────────────────
 
-function renderHorizontalBars(g, data, xScale, yScale, yKey, barSeries, animate) {
+function renderHorizontalBars(g, data, xScale, yScale, yKey, barSeries, animate, chartElement) {
   if (barSeries.length === 0) return
 
   const bandwidth = yScale.bandwidth()
@@ -449,16 +606,31 @@ function renderHorizontalBars(g, data, xScale, yScale, yKey, barSeries, animate)
       .attr("ry", radius)
       .attr("fill", series.color)
       .attr("opacity", series.opacity ?? 1)
+      .style("cursor", "pointer")
       .attr("width", animate ? 0 : d => Math.max(0, xScale(+d[series.data_key] || 0)))
       .transition().duration(animate ? DURATION : 0).ease(EASE)
       .delay((_, i) => animate ? i * 40 : 0)
       .attr("width", d => Math.max(0, xScale(+d[series.data_key] || 0)))
+
+    if (chartElement) {
+      g.selectAll(`.trackplot-hbar-${cls}`)
+        .on("click", function (event, d) {
+          const i = data.indexOf(d)
+          dispatchClick(chartElement, {
+            chartType: "horizontal_bar",
+            dataKey: series.data_key,
+            datum: d,
+            index: i,
+            value: d[series.data_key]
+          })
+        })
+    }
   })
 }
 
 // ─── Candlestick Renderer ────────────────────────────────────────────────────
 
-function renderCandlestick(g, data, xScale, yScale, xKey, series, animate) {
+function renderCandlestick(g, data, xScale, yScale, xKey, series, animate, chartElement) {
   const getX = xAccessorFor(xScale, xKey)
   const candleWidth = xScale.bandwidth ? xScale.bandwidth() * 0.6 : 8
 
@@ -492,17 +664,31 @@ function renderCandlestick(g, data, xScale, yScale, xKey, series, animate) {
       .attr("stroke", color)
       .attr("stroke-width", 1)
       .attr("rx", 1.5)
+      .style("cursor", "pointer")
 
     if (animate) {
       wick.attr("opacity", 0).transition().delay(i * 20).duration(300).attr("opacity", 1)
       body.attr("opacity", 0).transition().delay(i * 20).duration(300).attr("opacity", 1)
+    }
+
+    if (chartElement) {
+      body.on("click", function () {
+        dispatchClick(chartElement, {
+          chartType: "candlestick",
+          dataKey: null,
+          datum: d,
+          index: i,
+          value: { open, high, low, close }
+        })
+      })
     }
   })
 }
 
 // ─── Pie Renderer ────────────────────────────────────────────────────────────
 
-function renderPieSlices(g, data, series, width, height, animate) {
+function renderPieSlices(g, data, series, width, height, animate, theme, chartElement) {
+  const t = theme || DEFAULT_THEME
   const radius = Math.min(width, height) / 2
   const innerR = series.donut ? radius * 0.6 : 0
 
@@ -523,7 +709,7 @@ function renderPieSlices(g, data, series, width, height, animate) {
   const slices = center.selectAll("path")
     .data(pieData)
     .enter().append("path")
-    .attr("fill", (_, i) => COLORS[i % COLORS.length])
+    .attr("fill", (_, i) => t.colors[i % t.colors.length])
     .attr("stroke", "white")
     .attr("stroke-width", 2)
     .style("cursor", "pointer")
@@ -548,11 +734,24 @@ function renderPieSlices(g, data, series, width, height, animate) {
     .on("mouseleave", function (_, d) {
       d3.select(this).transition().duration(150).attr("d", arc(d))
     })
+
+  if (chartElement) {
+    slices.on("click", function (event, d) {
+      dispatchClick(chartElement, {
+        chartType: "pie",
+        dataKey: series.data_key,
+        datum: d.data,
+        index: d.index,
+        value: d.data[series.data_key]
+      })
+    })
+  }
 }
 
 // ─── Radar Renderer ──────────────────────────────────────────────────────────
 
-function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate) {
+function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate, theme, chartElement) {
+  const t = theme || DEFAULT_THEME
   const cx = width / 2
   const cy = height / 2
   const radius = Math.min(width, height) / 2 - 40
@@ -585,15 +784,15 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
     })
     center.append("polygon")
       .attr("points", pts.map(p => p.join(",")).join(" "))
-      .attr("fill", lvl === levels ? "none" : "none")
-      .attr("stroke", "#e5e7eb")
+      .attr("fill", "none")
+      .attr("stroke", t.grid_color)
       .attr("stroke-width", lvl === levels ? 1.5 : 0.8)
 
     // Level label
     if (lvl < levels) {
       center.append("text")
         .attr("x", 4).attr("y", -r + 4)
-        .attr("fill", "#d1d5db").attr("font-size", "10px").attr("font-family", FONT)
+        .attr("fill", t.axis_color).attr("font-size", "10px").attr("font-family", t.font || FONT)
         .text(Math.round((maxVal / levels) * lvl))
     }
   }
@@ -606,14 +805,14 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
 
     center.append("line")
       .attr("x1", 0).attr("y1", 0).attr("x2", x).attr("y2", y)
-      .attr("stroke", "#d1d5db").attr("stroke-width", 0.8)
+      .attr("stroke", t.axis_color).attr("stroke-width", 0.8)
 
     const lx = (radius + 18) * Math.cos(a)
     const ly = (radius + 18) * Math.sin(a)
     center.append("text")
       .attr("x", lx).attr("y", ly)
       .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
-      .attr("fill", "#6b7280").attr("font-size", "12px").attr("font-family", FONT)
+      .attr("fill", t.text_color).attr("font-size", "12px").attr("font-family", t.font || FONT)
       .text(cat)
   })
 
@@ -657,6 +856,18 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
         dot
           .on("mouseenter", function () { d3.select(this).transition().duration(100).attr("r", dotR * 1.5).attr("fill", series.color) })
           .on("mouseleave", function () { d3.select(this).transition().duration(100).attr("r", dotR).attr("fill", "white") })
+
+        if (chartElement) {
+          dot.on("click", function () {
+            dispatchClick(chartElement, {
+              chartType: "radar",
+              dataKey: series.data_key,
+              datum: data[i],
+              index: i,
+              value: data[i][series.data_key]
+            })
+          })
+        }
       })
     }
   })
@@ -664,7 +875,8 @@ function renderRadarChart(g, data, radarSeries, labelKey, width, height, animate
 
 // ─── Funnel Renderer ─────────────────────────────────────────────────────────
 
-function renderFunnelChart(g, data, series, width, height, animate) {
+function renderFunnelChart(g, data, series, width, height, animate, theme, chartElement) {
+  const t = theme || DEFAULT_THEME
   const labelKey = series.label_key
   const maxVal = d3.max(data, d => +d[series.data_key]) || 1
   const n = data.length
@@ -679,7 +891,7 @@ function renderFunnelChart(g, data, series, width, height, animate) {
     const topW = (val / maxVal) * maxW
     const botW = (nextVal / maxVal) * maxW
     const y = i * (stageH + gap)
-    const color = COLORS[i % COLORS.length]
+    const color = t.colors[i % t.colors.length]
 
     const path = [
       `M${cx - topW / 2},${y}`,
@@ -706,13 +918,25 @@ function renderFunnelChart(g, data, series, width, height, animate) {
       .on("mouseenter", function () { d3.select(this).transition().duration(150).attr("opacity", 0.85) })
       .on("mouseleave", function () { d3.select(this).transition().duration(150).attr("opacity", 1) })
 
+    if (chartElement) {
+      stage.on("click", function () {
+        dispatchClick(chartElement, {
+          chartType: "funnel",
+          dataKey: series.data_key,
+          datum: d,
+          index: i,
+          value: val
+        })
+      })
+    }
+
     // Label
     const label = labelKey ? d[labelKey] : `Stage ${i + 1}`
     const textEl = g.append("text")
       .attr("x", cx).attr("y", y + stageH / 2)
       .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
       .attr("fill", "white").attr("font-weight", "600")
-      .attr("font-size", "13px").attr("font-family", FONT)
+      .attr("font-size", "13px").attr("font-family", t.font || FONT)
       .text(`${label} — ${val}`)
 
     if (animate) {
@@ -723,14 +947,15 @@ function renderFunnelChart(g, data, series, width, height, animate) {
 
 // ─── Cartesian Tooltip ───────────────────────────────────────────────────────
 
-function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, config, width, height, margin) {
-  const tooltip = createTooltipDiv(element)
+function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, config, width, height, margin, theme) {
+  const t = theme || DEFAULT_THEME
+  const tooltip = createTooltipDiv(element, t)
   const getX = xAccessorFor(xScale, xKey)
-  const fmtValue = config.format ? d3.format(config.format) : v => v
+  const fmtValue = resolveFormatter(config.format)
 
   const crosshair = g.append("line")
     .attr("class", "trackplot-crosshair")
-    .attr("stroke", "#9ca3af").attr("stroke-width", 1).attr("stroke-dasharray", "4 3")
+    .attr("stroke", t.axis_color).attr("stroke-width", 1).attr("stroke-dasharray", "4 3")
     .attr("y1", 0).attr("y2", height)
     .style("opacity", 0)
 
@@ -756,16 +981,16 @@ function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, c
       })
 
       const label = xKey ? d[xKey] : `#${idx}`
-      let html = `<div style="font-weight:600;color:#111827;margin-bottom:4px">${label}</div>`
+      let html = `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:4px">${label}</div>`
 
       series.forEach(s => {
         if (s.type === "candlestick") {
           const o = d[s.open], h = d[s.high], l = d[s.low], c = d[s.close]
-          html += `<div style="color:#6b7280;display:grid;grid-template-columns:auto auto;gap:0 12px">`
-          html += `<span>Open:</span><span style="font-weight:500;color:#111827">${fmtValue(+o)}</span>`
-          html += `<span>High:</span><span style="font-weight:500;color:#111827">${fmtValue(+h)}</span>`
-          html += `<span>Low:</span><span style="font-weight:500;color:#111827">${fmtValue(+l)}</span>`
-          html += `<span>Close:</span><span style="font-weight:500;color:#111827">${fmtValue(+c)}</span>`
+          html += `<div style="color:${t.text_color};display:grid;grid-template-columns:auto auto;gap:0 12px">`
+          html += `<span>Open:</span><span style="font-weight:500;color:${t.tooltip_text}">${fmtValue(+o)}</span>`
+          html += `<span>High:</span><span style="font-weight:500;color:${t.tooltip_text}">${fmtValue(+h)}</span>`
+          html += `<span>Low:</span><span style="font-weight:500;color:${t.tooltip_text}">${fmtValue(+l)}</span>`
+          html += `<span>Close:</span><span style="font-weight:500;color:${t.tooltip_text}">${fmtValue(+c)}</span>`
           html += `</div>`
         } else if (s.data_key) {
           const val = d[s.data_key]
@@ -773,8 +998,8 @@ function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, c
             const formatted = isNaN(+val) ? val : fmtValue(+val)
             html += `<div style="display:flex;align-items:center;gap:8px">`
             html += `<span style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></span>`
-            html += `<span style="color:#6b7280">${s.data_key}</span>`
-            html += `<span style="font-weight:500;color:#111827;margin-left:auto;padding-left:12px">${formatted}</span>`
+            html += `<span style="color:${t.text_color}">${s.data_key}</span>`
+            html += `<span style="font-weight:500;color:${t.tooltip_text};margin-left:auto;padding-left:12px">${formatted}</span>`
             html += `</div>`
           }
         }
@@ -808,8 +1033,9 @@ function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, c
 
 // ─── Pie Tooltip ─────────────────────────────────────────────────────────────
 
-function setupPieTooltip(element, g, data, series, config) {
-  const tooltip = createTooltipDiv(element)
+function setupPieTooltip(element, g, data, series, config, theme) {
+  const t = theme || DEFAULT_THEME
+  const tooltip = createTooltipDiv(element, t)
   const total = d3.sum(data, d => +d[series.data_key])
   const labelKey = series.label_key
 
@@ -819,8 +1045,8 @@ function setupPieTooltip(element, g, data, series, config) {
       const pct = ((val / total) * 100).toFixed(1)
       const name = labelKey ? d.data[labelKey] : ""
       let html = ""
-      if (name) html += `<div style="font-weight:600;color:#111827;margin-bottom:2px">${name}</div>`
-      html += `<div style="color:#374151">${val} <span style="color:#9ca3af">(${pct}%)</span></div>`
+      if (name) html += `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:2px">${name}</div>`
+      html += `<div style="color:${t.text_color}">${val} <span style="color:${t.axis_color}">(${pct}%)</span></div>`
       tooltip.innerHTML = html
       tooltip.style.opacity = "1"
     })
@@ -836,18 +1062,14 @@ function setupPieTooltip(element, g, data, series, config) {
 
 // ─── Radar Tooltip ───────────────────────────────────────────────────────────
 
-function setupRadarTooltip(element, g, data, radarSeries, labelKey, config) {
-  const tooltip = createTooltipDiv(element)
+function setupRadarTooltip(element, g, data, radarSeries, labelKey, config, theme) {
+  const t = theme || DEFAULT_THEME
+  const tooltip = createTooltipDiv(element, t)
 
   g.selectAll(".trackplot-radar-dot")
     .on("mouseenter.tooltip", function (event) {
       const [mx, my] = d3.pointer(event, element)
-      const dotEl = d3.select(this)
-      const cx = +dotEl.attr("cx")
-      const cy = +dotEl.attr("cy")
 
-      // Find which data point this dot belongs to by matching position
-      // Dots are appended in series-then-point order
       const allDots = g.selectAll(".trackplot-radar-dot").nodes()
       const dotIndex = allDots.indexOf(this)
       const totalPoints = data.length
@@ -859,11 +1081,11 @@ function setupRadarTooltip(element, g, data, radarSeries, labelKey, config) {
       if (!series || !d) return
 
       const cat = labelKey ? d[labelKey] : `#${pointIdx}`
-      let html = `<div style="font-weight:600;color:#111827;margin-bottom:2px">${cat}</div>`
+      let html = `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:2px">${cat}</div>`
       html += `<div style="display:flex;align-items:center;gap:8px">`
       html += `<span style="width:8px;height:8px;border-radius:50%;background:${series.color};flex-shrink:0"></span>`
-      html += `<span style="color:#6b7280">${series.data_key}</span>`
-      html += `<span style="font-weight:500;color:#111827;margin-left:auto;padding-left:12px">${d[series.data_key]}</span>`
+      html += `<span style="color:${t.text_color}">${series.data_key}</span>`
+      html += `<span style="font-weight:500;color:${t.tooltip_text};margin-left:auto;padding-left:12px">${d[series.data_key]}</span>`
       html += `</div>`
       tooltip.innerHTML = html
       tooltip.style.opacity = "1"
@@ -877,8 +1099,9 @@ function setupRadarTooltip(element, g, data, radarSeries, labelKey, config) {
 
 // ─── Funnel Tooltip ──────────────────────────────────────────────────────────
 
-function setupFunnelTooltip(element, g, data, series, config) {
-  const tooltip = createTooltipDiv(element)
+function setupFunnelTooltip(element, g, data, series, config, theme) {
+  const t = theme || DEFAULT_THEME
+  const tooltip = createTooltipDiv(element, t)
   const labelKey = series.label_key
   const total = +data[0]?.[series.data_key] || 1
 
@@ -893,8 +1116,8 @@ function setupFunnelTooltip(element, g, data, series, config) {
       const pct = ((val / total) * 100).toFixed(1)
       const name = labelKey ? datum[labelKey] : `Stage ${idx + 1}`
 
-      let html = `<div style="font-weight:600;color:#111827;margin-bottom:2px">${name}</div>`
-      html += `<div style="color:#374151">${val} <span style="color:#9ca3af">(${pct}% of first)</span></div>`
+      let html = `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:2px">${name}</div>`
+      html += `<div style="color:${t.text_color}">${val} <span style="color:${t.axis_color}">(${pct}% of first)</span></div>`
       tooltip.innerHTML = html
       tooltip.style.opacity = "1"
     })
@@ -910,7 +1133,8 @@ function setupFunnelTooltip(element, g, data, series, config) {
 
 // ─── Legend Renderer ─────────────────────────────────────────────────────────
 
-function renderLegend(element, items, config) {
+function renderLegend(element, items, config, theme) {
+  const t = theme || DEFAULT_THEME
   const legend = document.createElement("div")
   Object.assign(legend.style, {
     display: "flex",
@@ -918,7 +1142,7 @@ function renderLegend(element, items, config) {
     gap: "16px",
     justifyContent: "center",
     padding: "8px 0 0",
-    fontFamily: FONT,
+    fontFamily: t.font || FONT,
     fontSize: "13px"
   })
 
@@ -937,7 +1161,7 @@ function renderLegend(element, items, config) {
     })
     const label = document.createElement("span")
     label.textContent = item.data_key
-    label.style.color = "#374151"
+    label.style.color = t.text_color
 
     el.appendChild(dot)
     el.appendChild(label)
@@ -960,19 +1184,28 @@ class Chart {
     this.components = config.components || []
     this.animate = config.animate !== false
     this.margin = { ...DEFAULT_MARGIN }
+    this.theme = config.theme || DEFAULT_THEME
 
     this.seriesList = this.components.filter(c => ALL_SERIES_TYPES.includes(c.type))
     this.axesList = this.components.filter(c => c.type === "axis")
     this.gridConfig = this.components.find(c => c.type === "grid")
     this.tooltipConfig = this.components.find(c => c.type === "tooltip")
     this.legendConfig = this.components.find(c => c.type === "legend")
+    this.referenceLines = this.components.filter(c => c.type === "reference_line")
 
-    this.seriesList.forEach((s, i) => { s.color = s.color || COLORS[i % COLORS.length] })
+    const themeColors = this.theme.colors || COLORS
+    this.seriesList.forEach((s, i) => { s.color = s.color || themeColors[i % themeColors.length] })
     this.isPie = this.seriesList.some(s => s.type === "pie")
     this.isRadar = this.seriesList.some(s => s.type === "radar")
     this.isFunnel = this.seriesList.some(s => s.type === "funnel")
     this.isHorizontal = this.seriesList.some(s => s.type === "horizontal_bar")
     this.xKey = getXKey(this.components)
+
+    // Apply theme background
+    if (this.theme.background && this.theme.background !== "transparent") {
+      this.element.style.background = this.theme.background
+      this.element.style.borderRadius = "8px"
+    }
   }
 
   render() {
@@ -1008,8 +1241,11 @@ class Chart {
     const cartesianSeries = this.seriesList.filter(s => CARTESIAN_TYPES.includes(s.type))
     const yScale = createYScale(this.data, cartesianSeries, h)
 
-    if (this.gridConfig) renderGrid(g, this.gridConfig, xScale, yScale, w, h)
-    renderAxes(g, this.axesList, xScale, yScale, w, h)
+    if (this.gridConfig) renderGrid(g, this.gridConfig, xScale, yScale, w, h, this.theme)
+    renderAxes(g, this.axesList, xScale, yScale, w, h, this.theme)
+
+    // Reference lines (rendered after grid/axes, before series overlay)
+    renderReferenceLines(g, this.referenceLines, xScale, yScale, w, h, this.theme)
 
     // Stacked areas
     const areaList = this.seriesList.filter(s => s.type === "area")
@@ -1024,25 +1260,25 @@ class Chart {
       }
     })
     Object.values(stackedGroups).forEach(group => renderStackedAreas(g, this.data, xScale, yScale, this.xKey, group, this.animate))
-    freeAreas.forEach(s => renderArea(g, this.data, xScale, yScale, this.xKey, s, this.animate))
+    freeAreas.forEach(s => renderArea(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
 
     // Bars
     const barSeries = this.seriesList.filter(s => s.type === "bar")
-    if (barSeries.length > 0) renderBars(g, this.data, xScale, yScale, this.xKey, barSeries, this.animate)
+    if (barSeries.length > 0) renderBars(g, this.data, xScale, yScale, this.xKey, barSeries, this.animate, this.element)
 
     // Candlestick
-    this.seriesList.filter(s => s.type === "candlestick").forEach(s => renderCandlestick(g, this.data, xScale, yScale, this.xKey, s, this.animate))
+    this.seriesList.filter(s => s.type === "candlestick").forEach(s => renderCandlestick(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
 
     // Lines
-    this.seriesList.filter(s => s.type === "line").forEach(s => renderLine(g, this.data, xScale, yScale, this.xKey, s, this.animate))
+    this.seriesList.filter(s => s.type === "line").forEach(s => renderLine(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
 
     // Scatter
-    this.seriesList.filter(s => s.type === "scatter").forEach(s => renderScatter(g, this.data, xScale, yScale, this.xKey, s, this.animate))
+    this.seriesList.filter(s => s.type === "scatter").forEach(s => renderScatter(g, this.data, xScale, yScale, this.xKey, s, this.animate, this.element))
 
     if (this.tooltipConfig) {
-      setupCartesianTooltip(this.element, g, this.data, xScale, yScale, this.xKey, cartesianSeries, this.tooltipConfig, w, h, m)
+      setupCartesianTooltip(this.element, g, this.data, xScale, yScale, this.xKey, cartesianSeries, this.tooltipConfig, w, h, m, this.theme)
     }
-    if (this.legendConfig) renderLegend(this.element, this.seriesList.filter(s => s.data_key), this.legendConfig)
+    if (this.legendConfig) renderLegend(this.element, this.seriesList.filter(s => s.data_key), this.legendConfig, this.theme)
   }
 
   renderHorizontalCartesian(totalW, totalH) {
@@ -1071,53 +1307,55 @@ class Chart {
       grid.append("g")
         .call(d3.axisBottom(xScale).tickSize(h).tickFormat(""))
         .attr("transform", `translate(0,0)`)
-        .call(g => g.selectAll("line").attr("stroke", "#e5e7eb").attr("stroke-dasharray", "3 3"))
+        .call(g => g.selectAll("line").attr("stroke", this.theme.grid_color).attr("stroke-dasharray", "3 3"))
         .call(g => g.selectAll(".domain").remove())
     }
 
+    const t = this.theme
     // Y axis (categories)
     const yG = g.append("g").attr("class", "trackplot-axis-y")
     yG.call(d3.axisLeft(yScale))
-    yG.selectAll("text").attr("fill", "#6b7280").attr("font-size", "12px").attr("font-family", FONT)
-    yG.selectAll("line").attr("stroke", "#d1d5db")
-    yG.select(".domain").attr("stroke", "#d1d5db")
+    yG.selectAll("text").attr("fill", t.text_color).attr("font-size", "12px").attr("font-family", t.font || FONT)
+    yG.selectAll("line").attr("stroke", t.axis_color)
+    yG.select(".domain").attr("stroke", t.axis_color)
 
     // X axis (values)
     this.axesList.filter(a => a.direction === "y" || (a.direction === "x" && !a.data_key)).forEach(axis => {
       const xG = g.append("g").attr("class", "trackplot-axis-x")
         .attr("transform", `translate(0,${h})`)
       let gen = d3.axisBottom(xScale)
-      if (axis.format) gen = gen.tickFormat(d3.format(axis.format))
+      const fmt = resolveFormatter(axis.format)
+      if (axis.format) gen = gen.tickFormat(fmt)
       xG.call(gen)
-      xG.selectAll("text").attr("fill", "#6b7280").attr("font-size", "12px").attr("font-family", FONT)
-      xG.selectAll("line").attr("stroke", "#d1d5db")
-      xG.select(".domain").attr("stroke", "#d1d5db")
+      xG.selectAll("text").attr("fill", t.text_color).attr("font-size", "12px").attr("font-family", t.font || FONT)
+      xG.selectAll("line").attr("stroke", t.axis_color)
+      xG.select(".domain").attr("stroke", t.axis_color)
       if (axis.label) {
         xG.append("text").attr("x", w / 2).attr("y", 36)
-          .attr("fill", "#374151").attr("font-size", "13px").attr("font-family", FONT)
+          .attr("fill", t.text_color).attr("font-size", "13px").attr("font-family", t.font || FONT)
           .attr("text-anchor", "middle").text(axis.label)
       }
     })
 
-    renderHorizontalBars(g, this.data, xScale, yScale, catKey, hBarSeries, this.animate)
+    renderHorizontalBars(g, this.data, xScale, yScale, catKey, hBarSeries, this.animate, this.element)
 
     if (this.tooltipConfig) {
-      const tooltip = createTooltipDiv(this.element)
-      const fmtValue = this.tooltipConfig.format ? d3.format(this.tooltipConfig.format) : v => v
+      const tooltip = createTooltipDiv(this.element, t)
+      const fmtValue = resolveFormatter(this.tooltipConfig.format)
 
       g.selectAll(".trackplot-hbar")
         .on("mouseenter", function (event) {
           const datum = d3.select(this).datum()
           const cat = catKey ? datum[catKey] : ""
-          let html = `<div style="font-weight:600;color:#111827;margin-bottom:4px">${cat}</div>`
+          let html = `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:4px">${cat}</div>`
           hBarSeries.forEach(s => {
             const val = datum[s.data_key]
             if (val != null) {
               const formatted = isNaN(+val) ? val : fmtValue(+val)
               html += `<div style="display:flex;align-items:center;gap:8px">`
               html += `<span style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></span>`
-              html += `<span style="color:#6b7280">${s.data_key}</span>`
-              html += `<span style="font-weight:500;color:#111827;margin-left:auto;padding-left:12px">${formatted}</span>`
+              html += `<span style="color:${t.text_color}">${s.data_key}</span>`
+              html += `<span style="font-weight:500;color:${t.tooltip_text};margin-left:auto;padding-left:12px">${formatted}</span>`
               html += `</div>`
             }
           })
@@ -1134,7 +1372,7 @@ class Chart {
         })
     }
 
-    if (this.legendConfig) renderLegend(this.element, hBarSeries, this.legendConfig)
+    if (this.legendConfig) renderLegend(this.element, hBarSeries, this.legendConfig, this.theme)
   }
 
   renderPie(totalW, totalH) {
@@ -1146,16 +1384,17 @@ class Chart {
     const svg = d3.select(this.element).append("svg").attr("width", totalW).attr("height", chartH)
     const g = svg.append("g")
 
-    renderPieSlices(g, this.data, pieSeries, totalW, chartH, this.animate)
-    if (this.tooltipConfig) setupPieTooltip(this.element, g, this.data, pieSeries, this.tooltipConfig)
+    renderPieSlices(g, this.data, pieSeries, totalW, chartH, this.animate, this.theme, this.element)
+    if (this.tooltipConfig) setupPieTooltip(this.element, g, this.data, pieSeries, this.tooltipConfig, this.theme)
 
     if (this.legendConfig) {
       const labelKey = pieSeries.label_key || this.xKey
+      const themeColors = this.theme.colors || COLORS
       const items = this.data.map((d, i) => ({
         data_key: labelKey ? d[labelKey] : `Slice ${i + 1}`,
-        color: COLORS[i % COLORS.length]
+        color: themeColors[i % themeColors.length]
       }))
-      renderLegend(this.element, items, this.legendConfig)
+      renderLegend(this.element, items, this.legendConfig, this.theme)
     }
   }
 
@@ -1166,9 +1405,9 @@ class Chart {
     const g = svg.append("g")
 
     const radarSeries = this.seriesList.filter(s => s.type === "radar")
-    renderRadarChart(g, this.data, radarSeries, this.xKey, totalW, chartH, this.animate)
-    if (this.tooltipConfig) setupRadarTooltip(this.element, g, this.data, radarSeries, this.xKey, this.tooltipConfig)
-    if (this.legendConfig) renderLegend(this.element, radarSeries, this.legendConfig)
+    renderRadarChart(g, this.data, radarSeries, this.xKey, totalW, chartH, this.animate, this.theme, this.element)
+    if (this.tooltipConfig) setupRadarTooltip(this.element, g, this.data, radarSeries, this.xKey, this.tooltipConfig, this.theme)
+    if (this.legendConfig) renderLegend(this.element, radarSeries, this.legendConfig, this.theme)
   }
 
   renderFunnel(totalW, totalH) {
@@ -1180,20 +1419,26 @@ class Chart {
     const svg = d3.select(this.element).append("svg").attr("width", totalW).attr("height", chartH)
     const g = svg.append("g")
 
-    renderFunnelChart(g, this.data, funnelSeries, totalW, chartH, this.animate)
-    if (this.tooltipConfig) setupFunnelTooltip(this.element, g, this.data, funnelSeries, this.tooltipConfig)
+    renderFunnelChart(g, this.data, funnelSeries, totalW, chartH, this.animate, this.theme, this.element)
+    if (this.tooltipConfig) setupFunnelTooltip(this.element, g, this.data, funnelSeries, this.tooltipConfig, this.theme)
 
     if (this.legendConfig) {
       const labelKey = funnelSeries.label_key
+      const themeColors = this.theme.colors || COLORS
       const items = this.data.map((d, i) => ({
         data_key: labelKey ? d[labelKey] : `Stage ${i + 1}`,
-        color: COLORS[i % COLORS.length]
+        color: themeColors[i % themeColors.length]
       }))
-      renderLegend(this.element, items, this.legendConfig)
+      renderLegend(this.element, items, this.legendConfig, this.theme)
     }
   }
 
-  clear() { this.element.innerHTML = "" }
+  clear() {
+    // Preserve background on re-render
+    const bg = this.element.style.background
+    this.element.innerHTML = ""
+    if (bg) this.element.style.background = bg
+  }
 
   destroy() {
     this.resizeObserver?.disconnect()

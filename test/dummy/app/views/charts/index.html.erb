@@ -187,4 +187,55 @@
     <% end %>
   </div>
 
+  <%# ─── Dark Theme ──────────────────────────────────────── %>
+  <div class="card" style="background: #1e1e2e; border-color: #2d3748;">
+    <h2 style="color: #e2e8f0;">Dark Theme</h2>
+    <p style="color: #718096;">Line chart with dark theme and reference line</p>
+    <%= trackplot_chart @sales_data, height: "280px", theme: :dark do |c| %>
+      <% c.line :revenue, curve: true %>
+      <% c.line :profit, curve: true %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y, format: :currency %>
+      <% c.tooltip format: :currency %>
+      <% c.reference_line y: 5000, label: "Target", color: "#fbbf24" %>
+      <% c.legend %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Reference Lines + Format ────────────────────────── %>
+  <div class="card">
+    <h2>Reference Lines &amp; Formatting</h2>
+    <p>Bar chart with target line, compact axis formatting</p>
+    <%= trackplot_chart @sales_data, height: "280px" do |c| %>
+      <% c.bar :revenue, color: "#6366f1" %>
+      <% c.axis :x, data_key: :month %>
+      <% c.axis :y, format: :compact %>
+      <% c.tooltip format: :currency %>
+      <% c.reference_line y: 5000, label: "Target", color: "#ef4444" %>
+      <% c.reference_line y: 3000, label: "Minimum", color: "#f59e0b", dashed: true %>
+      <% c.grid %>
+    <% end %>
+  </div>
+
+  <%# ─── Click Events Demo ───────────────────────────────── %>
+  <div class="card">
+    <h2>Click Events</h2>
+    <p>Click any bar &mdash; check browser console for event detail</p>
+    <div data-action="trackplot:click->console.log">
+      <%= trackplot_chart @category_data, height: "280px", theme: :vibrant do |c| %>
+        <% c.bar :sales %>
+        <% c.axis :x, data_key: :name %>
+        <% c.axis :y %>
+        <% c.tooltip %>
+        <% c.grid %>
+      <% end %>
+    </div>
+    <script>
+      document.addEventListener("trackplot:click", function(e) {
+        console.log("trackplot:click", e.detail)
+      })
+    </script>
+  </div>
+
 </div>

@@ -76,6 +76,11 @@ module Trackplot
       nil
     end
 
+    def reference_line(**opts)
+      @components << Components::ReferenceLine.new(**opts)
+      nil
+    end
+
     def render(view_context)
       chart_id = "trackplot-#{SecureRandom.hex(8)}"
       config = build_config
@@ -96,7 +101,8 @@ module Trackplot
       {
         data: data,
         components: components.map(&:to_config),
-        animate: options.fetch(:animate, true)
+        animate: options.fetch(:animate, true),
+        theme: Theme.resolve(options[:theme])
       }
     end
 

@@ -177,4 +177,147 @@ class ChartBuilderTest < Minitest::Test
     assert_equal "main", builder.components[0].to_config[:stack]
     assert_equal "main", builder.components[1].to_config[:stack]
   end
+
+  # ─── Theme Tests ──────────────────────────────────────────
+
+  def test_theme_resolve_default
+    theme = Trackplot::Theme.resolve(nil)
+    assert_equal "transparent", theme[:background]
+    assert_equal 8, theme[:colors].length
+  end
+
+  def test_theme_resolve_dark
+    theme = Trackplot::Theme.resolve(:dark)
+    assert_equal "#1e1e2e", theme[:background]
+    assert_equal "#e2e8f0", theme[:text_color]
+  end
+
+  def test_theme_resolve_vibrant
+    theme = Trackplot::Theme.resolve(:vibrant)
+    assert_includes theme[:colors], "#ff6b6b"
+  end
+
+  def test_theme_resolve_minimal
+    theme = Trackplot::Theme.resolve(:minimal)
+    assert_equal "#64748b", theme[:text_color]
+  end
+
+  def test_theme_resolve_custom_hash
+    theme = Trackplot::Theme.resolve({ colors: ["#ff0000"], background: "#111" })
+    assert_equal ["#ff0000"], theme[:colors]
+    assert_equal "#111", theme[:background]
+    # Inherits defaults for unspecified keys
+    assert_equal "#374151", theme[:text_color]
+  end
+
+  def test_theme_resolve_invalid_symbol
+    assert_raises(ArgumentError) { Trackplot::Theme.resolve(:nonexistent) }
+  end
+
+  def test_theme_resolve_invalid_type
+    assert_raises(ArgumentError) { Trackplot::Theme.resolve(42) }
+  end
+
+  def test_build_config_includes_theme
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.line(:revenue)
+
+    config = builder.send(:build_config)
+    assert config[:theme]
+    assert_equal "transparent", config[:theme][:background]
+  end
+
+  def test_build_config_with_dark_theme
+    builder = Trackplot::ChartBuilder.new(sample_data, theme: :dark)
+    builder.line(:revenue)
+
+    config = builder.send(:build_config)
+    assert_equal "#1e1e2e", config[:theme][:background]
+  end
+
+  # ─── Reference Line Tests ─────────────────────────────────
+
+  def test_collects_reference_line_y
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    result = builder.reference_line(y: 5000, label: "Target", color: "#ef4444")
+
+    assert_nil result
+    config = builder.components[0].to_config
+    assert_equal "reference_line", config[:type]
+    assert_equal "y", config[:direction]
+    assert_equal 5000, config[:value]
+    assert_equal "Target", config[:label]
+    assert_equal "#ef4444", config[:color]
+    assert_equal true, config[:dashed]
+  end
+
+  def test_collects_reference_line_x
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.reference_line(x: "Mar", label: "Launch", dashed: false)
+
+    config = builder.components[0].to_config
+    assert_equal "x", config[:direction]
+    assert_equal "Mar", config[:value]
+    assert_equal false, config[:dashed]
+  end
+
+  def test_reference_line_defaults
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.reference_line(y: 100)
+
+    config = builder.components[0].to_config
+    assert_equal "#ef4444", config[:color]
+    assert_equal 1.5, config[:stroke_width]
+    assert_equal true, config[:dashed]
+  end
+
+  # ─── Format Helper Tests ──────────────────────────────────
+
+  def test_axis_format_symbol_currency
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.axis(:y, format: :currency)
+
+    config = builder.components[0].to_config
+    assert_equal "currency", config[:format]
+  end
+
+  def test_axis_format_symbol_percent
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.axis(:y, format: :percent)
+
+    config = builder.components[0].to_config
+    assert_equal "percent", config[:format]
+  end
+
+  def test_axis_format_symbol_compact
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.axis(:y, format: :compact)
+
+    config = builder.components[0].to_config
+    assert_equal "compact", config[:format]
+  end
+
+  def test_axis_format_raw_string_passthrough
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.axis(:y, format: "$,.2f")
+
+    config = builder.components[0].to_config
+    assert_equal "$,.2f", config[:format]
+  end
+
+  def test_tooltip_format_symbol_currency
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.tooltip(format: :currency)
+
+    config = builder.components[0].to_config
+    assert_equal "currency", config[:format]
+  end
+
+  def test_tooltip_format_raw_string_passthrough
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.tooltip(format: ",.0f")
+
+    config = builder.components[0].to_config
+    assert_equal ",.0f", config[:format]
+  end
 end
