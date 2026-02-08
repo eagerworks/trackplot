@@ -42,6 +42,20 @@ Add to your Gemfile:
 gem "trackplot"
 ```
 
+Then run the install generator:
+
+```bash
+bin/rails generate trackplot:install
+```
+
+The generator auto-detects your JS setup (importmap vs jsbundling), installs the right packages, and adds `import "trackplot"` to `application.js`.
+
+Pass `--stimulus` to also get a Stimulus controller with auto-refresh polling and export actions:
+
+```bash
+bin/rails generate trackplot:install --stimulus
+```
+
 ### With importmap (default Rails 7+)
 
 You're done. The engine auto-registers D3 from CDN and pins the trackplot module.
@@ -361,6 +375,38 @@ Custom theme (merges with defaults):
 
 Theme properties: `colors`, `background`, `text_color`, `axis_color`, `grid_color`, `tooltip_bg`, `tooltip_text`, `tooltip_border`, `font`.
 
+### Color Scales
+
+Generate color palettes programmatically instead of hand-picking every color:
+
+```ruby
+# Light-to-dark ramp from a single color
+Trackplot::ColorScale.sequential("#6366f1", count: 6)
+# => ["#d8d9fb", "#b1b2f7", "#8a8cf3", "#6366f1", "#3c3de0", "#2627a0"]
+
+# Two-color diverging gradient (light midpoint)
+Trackplot::ColorScale.diverging("#ef4444", "#3b82f6", count: 7)
+
+# Evenly-spaced hues preserving saturation and lightness
+Trackplot::ColorScale.categorical("#6366f1", count: 8)
+```
+
+Use them as theme colors:
+
+```erb
+<%= trackplot_chart @data, theme: { colors: Trackplot::ColorScale.sequential("#6366f1") } do |c| %>
+  ...
+<% end %>
+```
+
+| Method | Description |
+|--------|-------------|
+| `.sequential(hex, count: 8)` | Light-to-dark palette varying lightness from 0.90 to 0.25 |
+| `.diverging(hex1, hex2, count: 8)` | Two-color gradient with light midpoint |
+| `.categorical(hex, count: 8)` | Evenly-spaced hues (360°/count steps) |
+
+All methods accept standard `#RGB` or `#RRGGBB` hex strings. `count: 0` returns `[]`, `count: 1` returns a single color, and invalid hex raises `ArgumentError`.
+
 ## Accessibility
 
 Charts support ARIA attributes for screen readers:
@@ -491,6 +537,32 @@ document.addEventListener("trackplot:render", function(e) {
 })
 ```
 
+## Stimulus Controller
+
+Run `bin/rails generate trackplot:install --stimulus` to get a controller with auto-refresh polling and export actions:
+
+```html
+<div data-controller="trackplot"
+     data-trackplot-url-value="/api/chart_data.json"
+     data-trackplot-interval-value="5000">
+  <%= trackplot_chart @data do |c| %>
+    <% c.line :revenue, curve: true %>
+    <% c.axis :x, data_key: :month %>
+    <% c.axis :y %>
+  <% end %>
+
+  <button data-action="trackplot#exportPng">Download PNG</button>
+  <button data-action="trackplot#exportSvg">Download SVG</button>
+</div>
+```
+
+| Value | Type | Description |
+|-------|------|-------------|
+| `url` | String | JSON endpoint to poll for fresh data |
+| `interval` | Number | Polling interval in ms (0 = disabled) |
+
+Actions: `exportPng`, `exportSvg`, `refresh` (manual trigger).
+
 ## ViewComponent / Phlex Support
 
 If you use [ViewComponent](https://viewcomponent.org/) or [Phlex](https://www.phlex.fun/), Trackplot provides optional integrations.
@@ -535,6 +607,25 @@ Pass options directly to `trackplot_chart`:
 | `title:` | `nil` | Accessibility label (adds ARIA attributes) |
 | `description:` | `nil` | Accessibility description (requires `title:`) |
 | `empty_message:` | `"No data available"` | Message shown when data is empty |
+
+## TypeScript
+
+Trackplot ships TypeScript declarations for the npm package. Type-checked `querySelector` narrows to the correct element:
+
+```typescript
+const chart = document.querySelector("trackplot-chart")
+// => TrackplotElement | null
+
+chart?.addEventListener("trackplot:click", (e) => {
+  e.detail.chartType  // string
+  e.detail.dataKey    // string
+  e.detail.value      // unknown
+})
+
+chart?.exportPNG(2, "report.png")  // Promise<Blob | null>
+```
+
+All config interfaces are exported: `ChartConfig`, `LineConfig`, `BarConfig`, `ThemeConfig`, `SparklineConfig`, etc.
 
 ## Development
 

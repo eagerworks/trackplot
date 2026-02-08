@@ -6,6 +6,7 @@ module Trackplot
   autoload :SparklineBuilder, "trackplot/sparkline_builder"
   autoload :DataAdapter, "trackplot/data_adapter"
   autoload :Theme, "trackplot/theme"
+  autoload :ColorScale, "trackplot/color_scale"
 
   module Components
     autoload :Base, "trackplot/components/base"

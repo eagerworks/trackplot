@@ -4,8 +4,16 @@
   "description": "Beautiful D3.js charts for Rails with a Recharts-like DSL",
   "module": "app/assets/javascripts/trackplot/index.js",
   "main": "app/assets/javascripts/trackplot/index.js",
+  "types": "app/assets/javascripts/trackplot/index.d.ts",
   "type": "module",
-  "keywords": ["d3", "charts", "rails", "visualization", "graphs", "svg"],
+  "keywords": [
+    "d3",
+    "charts",
+    "rails",
+    "visualization",
+    "graphs",
+    "svg"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
