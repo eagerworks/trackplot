@@ -1858,9 +1858,6 @@ class Chart {
     if (this.gridConfig) renderGrid(g, this.gridConfig, xScale, yScale, w, h, this.theme)
     renderAxes(g, this.axesList, xScale, yScale, w, h, this.theme, yScaleRight)
 
-    // Reference lines (rendered after grid/axes, before series overlay)
-    renderReferenceLines(g, this.referenceLines, xScale, yScale, w, h, this.theme)
-
     // Stacked areas
     const areaList = this.seriesList.filter(s => s.type === "area")
     const stackedGroups = {}
@@ -1903,6 +1900,9 @@ class Chart {
       const scale = s.y_axis === "right" && yScaleRight ? yScaleRight : yScale
       renderScatter(g, data, xScale, scale, this.xKey, s, this.animate, this.element)
     })
+
+    // Reference lines (rendered after series so they appear on top)
+    renderReferenceLines(g, this.referenceLines, xScale, yScale, w, h, this.theme)
 
     // Data labels
     if (this.dataLabelConfig) {
