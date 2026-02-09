@@ -37,11 +37,11 @@ module Trackplot
         say "Quick start — add this to any ERB view:"
         say ""
         say '  <%= trackplot_chart([{month: "Jan", revenue: 100}, {month: "Feb", revenue: 200}]) do |c| %>'
-        say '    <% c.axis :x, data_key: :month %>'
-        say '    <% c.axis :y, format: :currency %>'
-        say '    <% c.line :revenue, curve: true %>'
-        say '    <% c.tooltip format: :currency %>'
-        say '    <% c.legend %>'
+        say "    <% c.axis :x, data_key: :month %>"
+        say "    <% c.axis :y, format: :currency %>"
+        say "    <% c.line :revenue, curve: true %>"
+        say "    <% c.tooltip format: :currency %>"
+        say "    <% c.legend %>"
         say "  <% end %>"
         say ""
       end
@@ -69,10 +69,10 @@ module Trackplot
         say "Using #{pm} to install packages...", :cyan
 
         install_cmd = case pm
-                      when "yarn" then "yarn add d3 trackplot"
-                      when "pnpm" then "pnpm add d3 trackplot"
-                      else "npm install d3 trackplot"
-                      end
+        when "yarn" then "yarn add d3 trackplot"
+        when "pnpm" then "pnpm add d3 trackplot"
+        else "npm install d3 trackplot"
+        end
 
         run install_cmd
         ensure_import_in_application_js

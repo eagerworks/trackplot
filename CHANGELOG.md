@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-02-09
 
 ### Added
 - **Accessibility (ARIA + keyboard)**: `title:` and `description:` options on charts, `role="img"` and `aria-label` on SVG elements, `aria-hidden` on decorative elements (grid, crosshair, reference lines), `aria-label` on data points
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Heatmap chart type**: `c.heatmap(x_key: :day, y_key: :hour, value_key: :count)` for density/intensity visualization
 - **Treemap chart type**: `c.treemap(value_key: :size, label_key: :name)` for hierarchical data with optional `parent_key` grouping
 
-## [0.1.0] - 2025-01-01
+## [0.1.0] - 2026-02-08
 
 ### Added
 - Initial release with 10 chart types: Line, Bar, Area (with stacking), Scatter, Pie/Donut, Radar, Horizontal Bar, Candlestick, Funnel

@@ -37,7 +37,7 @@ module Trackplot
         h = lerp_hue(h1, h2, t)
         s = lerp(s1, s2, t)
         # Parabolic curve: l = 0.95 at t=0.5, dropping to ~0.35 at edges
-        l = 0.95 - 2.4 * (t - 0.5) ** 2
+        l = 0.95 - 2.4 * (t - 0.5)**2
         hsl_to_hex(h, s, l)
       end
     end
@@ -85,27 +85,27 @@ module Trackplot
         h = s = 0.0
       else
         d = max - min
-        s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min)
+        s = (l > 0.5) ? d / (2.0 - max - min) : d / (max + min)
 
         h = case max
-            when r then ((g - b) / d + (g < b ? 6 : 0)) / 6.0
-            when g then ((b - r) / d + 2) / 6.0
-            when b then ((r - g) / d + 4) / 6.0
-            end
+        when r then ((g - b) / d + ((g < b) ? 6 : 0)) / 6.0
+        when g then ((b - r) / d + 2) / 6.0
+        when b then ((r - g) / d + 4) / 6.0
+        end
       end
 
       [h * 360.0, s, l]
     end
 
     def hsl_to_rgb(h, s, l)
-      h = h / 360.0
+      h /= 360.0
 
       if s == 0
         val = (l * 255).round
         return [val, val, val]
       end
 
-      q = l < 0.5 ? l * (1 + s) : l + s - l * s
+      q = (l < 0.5) ? l * (1 + s) : l + s - l * s
       p = 2 * l - q
 
       r = hue_to_rgb(p, q, h + 1.0 / 3)
@@ -146,13 +146,13 @@ module Trackplot
     def lerp_hue(h1, h2, t)
       diff = h2 - h1
       if diff.abs > 180
-        diff += diff > 0 ? -360 : 360
+        diff += (diff > 0) ? -360 : 360
       end
       (h1 + diff * t) % 360
     end
 
     private_class_method :validate_hex!, :hex_to_rgb, :rgb_to_hsl, :hsl_to_rgb,
-                         :hue_to_rgb, :rgb_to_hex, :hex_to_hsl, :hsl_to_hex,
-                         :lerp, :lerp_hue
+      :hue_to_rgb, :rgb_to_hex, :hex_to_hsl, :hsl_to_hex,
+      :lerp, :lerp_hue
   end
 end

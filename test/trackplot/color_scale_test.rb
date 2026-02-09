@@ -191,10 +191,10 @@ class ColorScaleTest < Minitest::Test
 
     d = max - min
     h = case max
-        when r then ((g - b) / d + (g < b ? 6 : 0)) / 6.0
-        when g then ((b - r) / d + 2) / 6.0
-        when b then ((r - g) / d + 4) / 6.0
-        end
+    when r then ((g - b) / d + ((g < b) ? 6 : 0)) / 6.0
+    when g then ((b - r) / d + 2) / 6.0
+    when b then ((r - g) / d + 4) / 6.0
+    end
     h * 360.0
   end
 end

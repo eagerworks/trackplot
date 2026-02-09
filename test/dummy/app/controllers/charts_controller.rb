@@ -156,11 +156,11 @@ class ChartsController < ApplicationController
     @drilldown_heatmap_data = %w[Q1 Q2 Q3 Q4].flat_map do |quarter|
       %w[Sales Marketing Engineering Support].map do |dept|
         months = case quarter
-                 when "Q1" then %w[Jan Feb Mar]
-                 when "Q2" then %w[Apr May Jun]
-                 when "Q3" then %w[Jul Aug Sep]
-                 when "Q4" then %w[Oct Nov Dec]
-                 end
+        when "Q1" then %w[Jan Feb Mar]
+        when "Q2" then %w[Apr May Jun]
+        when "Q3" then %w[Jul Aug Sep]
+        when "Q4" then %w[Oct Nov Dec]
+        end
         {
           day: quarter, hour: dept,
           count: rand(50..200),
