@@ -1,6 +1,6 @@
 {
   "name": "trackplot",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Beautiful D3.js charts for Rails with a Recharts-like DSL",
   "module": "app/assets/javascripts/trackplot/index.js",
   "main": "app/assets/javascripts/trackplot/index.js",

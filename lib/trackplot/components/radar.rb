@@ -16,7 +16,8 @@ module Trackplot
           opacity: options[:opacity] || 0.15,
           stroke_width: options[:stroke_width] || 2,
           dot: options.fetch(:dot, true),
-          dot_size: options[:dot_size] || 4
+          dot_size: options[:dot_size] || 4,
+          name: options[:name] || data_key
         }.compact
       end
     end

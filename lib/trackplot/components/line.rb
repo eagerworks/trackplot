@@ -18,7 +18,8 @@ module Trackplot
           stroke_width: options[:stroke_width] || 2,
           dot: options.fetch(:dot, true),
           dot_size: options[:dot_size] || 4,
-          y_axis: options[:y_axis]&.to_s
+          y_axis: options[:y_axis]&.to_s,
+          name: options[:name] || data_key
         }.compact
       end
     end

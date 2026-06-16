@@ -17,6 +17,7 @@ export interface ThemeConfig {
 export interface LineConfig {
   type: "line";
   data_key: string;
+  name?: string;
   color?: string;
   stroke_width?: number;
   curve?: boolean;
@@ -29,6 +30,7 @@ export interface LineConfig {
 export interface BarConfig {
   type: "bar";
   data_key: string;
+  name?: string;
   color?: string;
   opacity?: number;
   radius?: number;
@@ -39,6 +41,7 @@ export interface BarConfig {
 export interface AreaConfig {
   type: "area";
   data_key: string;
+  name?: string;
   color?: string;
   opacity?: number;
   stroke_width?: number;
@@ -50,6 +53,7 @@ export interface AreaConfig {
 export interface ScatterConfig {
   type: "scatter";
   data_key: string;
+  name?: string;
   x_key?: string;
   color?: string;
   opacity?: number;
@@ -68,6 +72,7 @@ export interface PieConfig {
 export interface RadarConfig {
   type: "radar";
   data_key: string;
+  name?: string;
   color?: string;
   opacity?: number;
   stroke_width?: number;
@@ -78,6 +83,7 @@ export interface RadarConfig {
 export interface HorizontalBarConfig {
   type: "horizontal_bar";
   data_key: string;
+  name?: string;
   color?: string;
   opacity?: number;
   radius?: number;

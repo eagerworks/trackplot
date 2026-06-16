@@ -14,7 +14,8 @@ module Trackplot
           data_key: data_key,
           color: options[:color],
           opacity: options[:opacity],
-          radius: options[:radius] || 4
+          radius: options[:radius] || 4,
+          name: options[:name] || data_key
         }.compact
       end
     end

@@ -521,6 +521,45 @@ class ChartBuilderTest < Minitest::Test
     refute config.key?(:y_axis)
   end
 
+  # ─── Series Name (custom label) Tests ──────────────────────
+
+  def test_line_accepts_custom_name
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.line(:revenue, name: "Total Revenue")
+
+    assert_equal "Total Revenue", builder.components[0].to_config[:name]
+  end
+
+  def test_series_name_defaults_to_data_key
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.line(:revenue)
+
+    assert_equal :revenue, builder.components[0].to_config[:name]
+  end
+
+  def test_custom_name_supported_on_all_series_types
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.line(:revenue, name: "Rev")
+    builder.bar(:revenue, name: "Rev")
+    builder.area(:revenue, name: "Rev")
+    builder.scatter(:revenue, name: "Rev")
+    builder.radar(:revenue, name: "Rev")
+    builder.horizontal_bar(:revenue, name: "Rev")
+
+    builder.components.each do |component|
+      assert_equal "Rev", component.to_config[:name], "#{component.to_config[:type]} should forward :name"
+    end
+  end
+
+  def test_series_name_serializes_as_string
+    builder = Trackplot::ChartBuilder.new(sample_data)
+    builder.line(:revenue, name: "Total Revenue")
+
+    parsed = JSON.parse(builder.send(:build_config).to_json)
+    line = parsed["components"].find { |c| c["type"] == "line" }
+    assert_equal "Total Revenue", line["name"]
+  end
+
   # ─── Brush Tests ────────────────────────────────────────────
 
   def test_collects_brush_component

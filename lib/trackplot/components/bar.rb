@@ -16,7 +16,8 @@ module Trackplot
           opacity: options[:opacity],
           radius: options[:radius] || 4,
           stack: options[:stack],
-          y_axis: options[:y_axis]&.to_s
+          y_axis: options[:y_axis]&.to_s,
+          name: options[:name] || data_key
         }.compact
       end
     end
