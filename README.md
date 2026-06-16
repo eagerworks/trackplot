@@ -103,10 +103,10 @@ Your data can use symbol or string keys — Trackplot normalizes both:
 ### Line
 
 ```erb
-<% c.line :revenue, color: "#6366f1", curve: true, dashed: true %>
+<% c.line :revenue, name: "Total Revenue", color: "#6366f1", curve: true, dashed: true %>
 ```
 
-Options: `color`, `curve` (smooth), `dashed`, `stroke_width`, `dot` (true/false), `dot_size`, `y_axis`.
+Options: `color`, `curve` (smooth), `dashed`, `stroke_width`, `dot` (true/false), `dot_size`, `y_axis`, `name` (legend/tooltip label — defaults to the data key).
 
 ### Bar
 
@@ -114,7 +114,7 @@ Options: `color`, `curve` (smooth), `dashed`, `stroke_width`, `dot` (true/false)
 <% c.bar :sales, color: "#06b6d4", opacity: 0.8, radius: 6 %>
 ```
 
-Multiple bar series render as grouped bars automatically. Options: `color`, `opacity`, `radius` (corner rounding), `stack` (group name for stacking), `y_axis`.
+Multiple bar series render as grouped bars automatically. Options: `color`, `opacity`, `radius` (corner rounding), `stack` (group name for stacking), `y_axis`, `name`.
 
 Stack bars by giving them the same `stack` name:
 
@@ -129,7 +129,7 @@ Stack bars by giving them the same `stack` name:
 <% c.area :revenue, color: "#8b5cf6", curve: true %>
 ```
 
-Renders a gradient fill with a stroke line. Stack multiple areas by giving them the same `stack` name:
+Renders a gradient fill with a stroke line. Options: `color`, `curve`, `opacity`, `stroke_width`, `stack`, `y_axis`, `name`. Stack multiple areas by giving them the same `stack` name:
 
 ```erb
 <% c.area :revenue, stack: "main", color: "#10b981", curve: true %>
@@ -142,7 +142,7 @@ Renders a gradient fill with a stroke line. Stack multiple areas by giving them 
 <% c.scatter :weight, color: "#ec4899", dot_size: 6 %>
 ```
 
-Options: `color`, `dot_size`, `opacity`, `x_key` (override x-axis key), `y_axis`.
+Options: `color`, `dot_size`, `opacity`, `x_key` (override x-axis key), `y_axis`, `name`.
 
 ### Pie / Donut
 
@@ -160,7 +160,7 @@ Options: `label_key`, `donut`, `pad_angle`.
 <% c.radar :player_b, color: "#ef4444" %>
 ```
 
-Options: `color`, `opacity`, `stroke_width`, `dot`, `dot_size`.
+Options: `color`, `opacity`, `stroke_width`, `dot`, `dot_size`, `name`.
 
 ### Horizontal Bar
 

@@ -60,6 +60,10 @@ function sanitizeClass(str) {
   return String(str).replace(/[^a-zA-Z0-9_-]/g, "_")
 }
 
+function seriesLabel(s) {
+  return s.name || s.data_key
+}
+
 function getXKey(components) {
   const xAxis = components.find(c => c.type === "axis" && c.direction === "x")
   return xAxis ? xAxis.data_key : null
@@ -510,7 +514,7 @@ function renderLine(g, data, xScale, yScale, xKey, series, animate, chartElement
       .attr("stroke", series.color)
       .attr("stroke-width", 2)
       .style("cursor", "pointer")
-      .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
+      .attr("aria-label", d => `${seriesLabel(series)}: ${d[series.data_key]}`)
 
     if (animate) {
       dots.attr("r", 0).transition().delay(DURATION).duration(300).attr("r", dotR)
@@ -582,7 +586,7 @@ function renderBars(g, data, xScale, yScale, xKey, barSeries, animate, chartElem
         .attr("opacity", series.opacity ?? 1)
         .attr("y", animate ? yScale(0) : d => yScale(+d[series.data_key] || 0))
         .attr("height", animate ? 0 : d => Math.max(0, yScale(0) - yScale(+d[series.data_key] || 0)))
-        .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
+        .attr("aria-label", d => `${seriesLabel(series)}: ${d[series.data_key]}`)
         .style("cursor", "pointer")
         .transition().duration(animate ? DURATION : 0).ease(EASE)
         .delay((_, i) => animate ? i * 40 : 0)
@@ -637,7 +641,7 @@ function renderStackedBars(g, data, xScale, yScale, xKey, stackedSeries, animate
       .attr("opacity", series.opacity ?? 1)
       .attr("y", animate ? yScale(0) : d => yScale(d[1]))
       .attr("height", animate ? 0 : d => Math.max(0, yScale(d[0]) - yScale(d[1])))
-      .attr("aria-label", (d, i) => `${series.data_key}: ${data[i][series.data_key]}`)
+      .attr("aria-label", (d, i) => `${seriesLabel(series)}: ${data[i][series.data_key]}`)
       .style("cursor", "pointer")
       .transition().duration(animate ? DURATION : 0).ease(EASE)
       .delay((_, i) => animate ? i * 40 : 0)
@@ -771,7 +775,7 @@ function renderScatter(g, data, xScale, yScale, xKey, series, animate, chartElem
     .attr("fill-opacity", series.opacity || 0.7)
     .attr("stroke", "white")
     .attr("stroke-width", 1.5)
-    .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
+    .attr("aria-label", d => `${seriesLabel(series)}: ${d[series.data_key]}`)
     .style("cursor", "pointer")
 
   if (animate) {
@@ -829,7 +833,7 @@ function renderHorizontalBars(g, data, xScale, yScale, yKey, barSeries, animate,
       .attr("ry", radius)
       .attr("fill", series.color)
       .attr("opacity", series.opacity ?? 1)
-      .attr("aria-label", d => `${series.data_key}: ${d[series.data_key]}`)
+      .attr("aria-label", d => `${seriesLabel(series)}: ${d[series.data_key]}`)
       .style("cursor", "pointer")
       .attr("width", animate ? 0 : d => Math.max(0, xScale(+d[series.data_key] || 0)))
       .transition().duration(animate ? DURATION : 0).ease(EASE)
@@ -1468,7 +1472,7 @@ function setupCartesianTooltip(element, g, data, xScale, yScale, xKey, series, c
             const formatted = isNaN(+val) ? val : fmtValue(+val)
             html += `<div style="display:flex;align-items:center;gap:8px">`
             html += `<span style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></span>`
-            html += `<span style="color:${t.text_color}">${s.data_key}</span>`
+            html += `<span style="color:${t.text_color}">${seriesLabel(s)}</span>`
             html += `<span style="font-weight:500;color:${t.tooltip_text};margin-left:auto;padding-left:12px">${formatted}</span>`
             html += `</div>`
           }
@@ -1554,7 +1558,7 @@ function setupRadarTooltip(element, g, data, radarSeries, labelKey, config, them
       let html = `<div style="font-weight:600;color:${t.tooltip_text};margin-bottom:2px">${cat}</div>`
       html += `<div style="display:flex;align-items:center;gap:8px">`
       html += `<span style="width:8px;height:8px;border-radius:50%;background:${series.color};flex-shrink:0"></span>`
-      html += `<span style="color:${t.text_color}">${series.data_key}</span>`
+      html += `<span style="color:${t.text_color}">${seriesLabel(series)}</span>`
       html += `<span style="font-weight:500;color:${t.tooltip_text};margin-left:auto;padding-left:12px">${d[series.data_key]}</span>`
       html += `</div>`
       tooltip.innerHTML = html
@@ -1685,7 +1689,7 @@ function renderLegend(element, items, config, theme) {
       background: item.color, flexShrink: "0"
     })
     const label = document.createElement("span")
-    label.textContent = item.data_key
+    label.textContent = seriesLabel(item)
     label.style.color = t.text_color
 
     el.appendChild(dot)
@@ -2000,7 +2004,7 @@ class Chart {
               const formatted = isNaN(+val) ? val : fmtValue(+val)
               html += `<div style="display:flex;align-items:center;gap:8px">`
               html += `<span style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></span>`
-              html += `<span style="color:${t.text_color}">${s.data_key}</span>`
+              html += `<span style="color:${t.text_color}">${seriesLabel(s)}</span>`
               html += `<span style="font-weight:500;color:${t.tooltip_text};margin-left:auto;padding-left:12px">${formatted}</span>`
               html += `</div>`
             }

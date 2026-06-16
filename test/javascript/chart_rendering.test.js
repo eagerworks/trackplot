@@ -342,6 +342,27 @@ describe("Chart Rendering", () => {
       expect(legendItems.length).toBe(4)
     })
 
+    it("uses series name for legend label when provided, else data_key", async () => {
+      const el = await createChart({
+        data: SAMPLE_DATA,
+        animate: false,
+        components: [
+          { type: "bar", data_key: "revenue", name: "Total Revenue" },
+          { type: "bar", data_key: "cost" },
+          { type: "axis", direction: "x", data_key: "month" },
+          { type: "axis", direction: "y" },
+          { type: "legend" }
+        ]
+      })
+      const labelTexts = Array.from(el.querySelectorAll("div > div > span"))
+        .map(s => s.textContent)
+        .filter(t => t.length > 0)
+      // Custom name overrides data_key; series without a name falls back to data_key
+      expect(labelTexts).toContain("Total Revenue")
+      expect(labelTexts).toContain("cost")
+      expect(labelTexts).not.toContain("revenue")
+    })
+
     it("renders empty state message when data is empty", async () => {
       const el = await createChart({
         data: [],

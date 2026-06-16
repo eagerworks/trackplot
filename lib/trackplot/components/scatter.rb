@@ -17,7 +17,8 @@ module Trackplot
           dot_size: options[:dot_size] || 5,
           opacity: options[:opacity] || 0.7,
           shape: options[:shape] || "circle",
-          y_axis: options[:y_axis]&.to_s
+          y_axis: options[:y_axis]&.to_s,
+          name: options[:name] || data_key
         }.compact
       end
     end
