@@ -3,6 +3,7 @@ module Trackplot
     isolate_namespace Trackplot
 
     initializer "trackplot.helpers" do
+      require_relative "../../app/helpers/trackplot/chart_helper"
       ActiveSupport.on_load(:action_view) do
         include Trackplot::ChartHelper
       end
